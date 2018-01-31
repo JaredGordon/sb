@@ -1,0 +1,12 @@
+---
+applications:
+- name: sb-broker
+  memory: 1G
+  instances: 1
+  buildpack: java_buildpack_offline
+  path: target/sb-broker.jar
+  services: [ hello-ds ]
+  env:
+    SPRING_PROFILES_ACTIVE: cloud
+    SECURITY_USER_NAME: sbUser
+    SECURITY_USER_PASSWORD: sbPassword
