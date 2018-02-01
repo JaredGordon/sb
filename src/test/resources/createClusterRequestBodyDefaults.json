@@ -1,0 +1,16 @@
+{
+  "cluster_name": "d3228e4268d449e1be1a918e0eac49e3",
+  "plan": {
+    "elasticsearch": {
+      "version": "5.4.1"
+    },
+    "zone_count": 1,
+    "cluster_topology": [
+      {
+        "topology_type": "default",
+        "memory_per_node": 1024,
+        "node_count_per_zone": 3
+      }
+    ]
+  }
+}

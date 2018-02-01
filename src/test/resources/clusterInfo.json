@@ -1,0 +1,104 @@
+{
+  "cluster_name": "logging-and-metrics",
+  "plan_info": {
+    "healthy": true,
+    "current": {
+      "plan_attempt_id": "2ebae42c-7267-4635-bc5b-cf92235b385c",
+      "attempt_end_time": "2017-06-13T02:22:04.172Z",
+      "plan_attempt_log": [],
+      "attempt_start_time": "2017-06-13T02:21:46.294Z",
+      "healthy": true,
+      "plan": {
+        "zone_count": 1,
+        "cluster_topology": [
+          {
+            "memory_per_node": 1024,
+            "node_count_per_zone": 1
+          }
+        ],
+        "elasticsearch": {
+          "version": "5.4.1"
+        }
+      }
+    },
+    "history": []
+  },
+  "snapshots": {
+    "healthy": true,
+    "count": 0
+  },
+  "associated_kibana_clusters": [
+    {
+      "kibana_id": "f4de0ee4114a406aa04457f37f9abbcd",
+      "enabled": true,
+      "links": {}
+    }
+  ],
+  "elasticsearch": {
+    "healthy": true,
+    "shard_info": {
+      "healthy": true,
+      "available_shards": [
+        {
+          "instance_name": "instance-0000000000",
+          "shard_count": 16
+        }
+      ],
+      "unavailable_shards": [
+        {
+          "instance_name": "instance-0000000000",
+          "shard_count": 0
+        }
+      ],
+      "unavailable_replicas": [
+        {
+          "instance_name": "instance-0000000000",
+          "replica_count": 0
+        }
+      ]
+    },
+    "master_info": {
+      "healthy": true,
+      "masters": [
+        {
+          "master_node_id": "pNk8VbBESZ6dXxJeO01fNA",
+          "instances": [
+            "instance-0000000000"
+          ]
+        }
+      ],
+      "instances_with_no_master": []
+    }
+  },
+  "links": {},
+  "healthy": true,
+  "status": "started",
+  "topology": {
+    "healthy": true,
+    "instances": [
+      {
+        "disk": {
+          "disk_space_used": 1350
+        },
+        "maintenance_mode": false,
+        "service_running": true,
+        "healthy": true,
+        "instance_name": "instance-0000000000",
+        "service_version": "5.4.1",
+        "allocator_id": "10.104.32.40",
+        "zone": "ece-region-1a",
+        "container_started": true,
+        "memory": {
+          "instance_capacity": 1024,
+          "memory_pressure": 31
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "version": 6,
+    "last_modified": "2017-06-13T02:29:04.246Z",
+    "endpoint": "a249ed949aeb44deb53388f1bda81c35.test.pde.east.paas.geointservices.io"
+  },
+  "cluster_id": "a249ed949aeb44deb53388f1bda81c35"
+}

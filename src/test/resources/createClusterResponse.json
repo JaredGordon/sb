@@ -1,0 +1,7 @@
+{
+  "elasticsearch_cluster_id": "aClusterId",
+  "credentials": {
+    "password": "secret",
+    "username": "aUser"
+  }
+}

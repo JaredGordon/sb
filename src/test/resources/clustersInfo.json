@@ -1,0 +1,254 @@
+{
+  "return_count": 3,
+  "elasticsearch_clusters": [
+    {
+      "cluster_name": "6629d808-a1c8-42d4-b3d6-b504716a8981",
+      "plan_info": {
+        "healthy": true,
+        "history": []
+      },
+      "snapshots": {
+        "healthy": true,
+        "count": 0
+      },
+      "associated_kibana_clusters": [
+        {
+          "kibana_id": "e810626e53f8415b877e83def20a3563",
+          "enabled": true,
+          "links": {}
+        }
+      ],
+      "elasticsearch": {
+        "healthy": true,
+        "shard_info": {
+          "healthy": true,
+          "available_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 9
+            }
+          ],
+          "unavailable_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 0
+            }
+          ],
+          "unavailable_replicas": [
+            {
+              "instance_name": "instance-0000000000",
+              "replica_count": 0
+            }
+          ]
+        },
+        "master_info": {
+          "healthy": true,
+          "masters": [
+            {
+              "master_node_id": "0JVKFLWwTpW0-OfbmfXgjQ",
+              "instances": [
+                "instance-0000000000"
+              ]
+            }
+          ],
+          "instances_with_no_master": []
+        }
+      },
+      "links": {},
+      "healthy": true,
+      "status": "started",
+      "topology": {
+        "healthy": true,
+        "instances": [
+          {
+            "disk": {
+              "disk_space_used": 4
+            },
+            "maintenance_mode": false,
+            "service_running": true,
+            "healthy": true,
+            "instance_name": "instance-0000000000",
+            "service_version": "5.4.1",
+            "allocator_id": "10.104.32.40",
+            "zone": "ece-region-1a",
+            "container_started": true,
+            "memory": {
+              "instance_capacity": 1024,
+              "memory_pressure": 63
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "version": 5,
+        "last_modified": "2017-06-13T21:26:27.393Z",
+        "endpoint": "d3228e4268d449e1be1a918e0eac49e3.test.pde.east.paas.geointservices.io"
+      },
+      "cluster_id": "d3228e4268d449e1be1a918e0eac49e3"
+    },
+    {
+      "cluster_name": "logging-and-metrics",
+      "plan_info": {
+        "healthy": true,
+        "history": []
+      },
+      "snapshots": {
+        "healthy": true,
+        "count": 0
+      },
+      "associated_kibana_clusters": [
+        {
+          "kibana_id": "f4de0ee4114a406aa04457f37f9abbcd",
+          "enabled": true,
+          "links": {}
+        }
+      ],
+      "elasticsearch": {
+        "healthy": true,
+        "shard_info": {
+          "healthy": true,
+          "available_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 16
+            }
+          ],
+          "unavailable_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 0
+            }
+          ],
+          "unavailable_replicas": [
+            {
+              "instance_name": "instance-0000000000",
+              "replica_count": 0
+            }
+          ]
+        },
+        "master_info": {
+          "healthy": true,
+          "masters": [
+            {
+              "master_node_id": "pNk8VbBESZ6dXxJeO01fNA",
+              "instances": [
+                "instance-0000000000"
+              ]
+            }
+          ],
+          "instances_with_no_master": []
+        }
+      },
+      "links": {},
+      "healthy": true,
+      "status": "started",
+      "topology": {
+        "healthy": true,
+        "instances": [
+          {
+            "disk": {
+              "disk_space_used": 1268
+            },
+            "maintenance_mode": false,
+            "service_running": true,
+            "healthy": true,
+            "instance_name": "instance-0000000000",
+            "service_version": "5.4.1",
+            "allocator_id": "10.104.32.40",
+            "zone": "ece-region-1a",
+            "container_started": true,
+            "memory": {
+              "instance_capacity": 1024,
+              "memory_pressure": 58
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "version": 6,
+        "last_modified": "2017-06-13T02:29:04.246Z",
+        "endpoint": "a249ed949aeb44deb53388f1bda81c35.test.pde.east.paas.geointservices.io"
+      },
+      "cluster_id": "a249ed949aeb44deb53388f1bda81c35"
+    },
+    {
+      "cluster_name": "admin-console-elasticsearch",
+      "plan_info": {
+        "healthy": true,
+        "history": []
+      },
+      "snapshots": {
+        "healthy": true,
+        "count": 0
+      },
+      "associated_kibana_clusters": [],
+      "elasticsearch": {
+        "healthy": true,
+        "shard_info": {
+          "healthy": true,
+          "available_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 9
+            }
+          ],
+          "unavailable_shards": [
+            {
+              "instance_name": "instance-0000000000",
+              "shard_count": 0
+            }
+          ],
+          "unavailable_replicas": [
+            {
+              "instance_name": "instance-0000000000",
+              "replica_count": 0
+            }
+          ]
+        },
+        "master_info": {
+          "healthy": true,
+          "masters": [
+            {
+              "master_node_id": "Ge5FlHR3RwerzzfJMTi_Zw",
+              "instances": [
+                "instance-0000000000"
+              ]
+            }
+          ],
+          "instances_with_no_master": []
+        }
+      },
+      "links": {},
+      "healthy": true,
+      "status": "started",
+      "topology": {
+        "healthy": true,
+        "instances": [
+          {
+            "disk": {
+              "disk_space_used": 2
+            },
+            "maintenance_mode": false,
+            "service_running": true,
+            "healthy": true,
+            "instance_name": "instance-0000000000",
+            "service_version": "5.4.1",
+            "allocator_id": "10.104.32.40",
+            "zone": "ece-region-1a",
+            "container_started": true,
+            "memory": {
+              "instance_capacity": 4096,
+              "memory_pressure": 7
+            }
+          }
+        ]
+      },
+      "metadata": {
+        "version": 4,
+        "last_modified": "2017-06-13T02:21:43.712Z",
+        "endpoint": "876d76804ec5450fb5ebe22882857ab4.test.pde.east.paas.geointservices.io"
+      },
+      "cluster_id": "876d76804ec5450fb5ebe22882857ab4"
+    }
+  ]
+}

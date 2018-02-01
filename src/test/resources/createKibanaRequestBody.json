@@ -1,0 +1,16 @@
+{
+  "cluster_name": "kibanad3228e4268d449e1be1a918e0eac49e3",
+  "elasticsearch_cluster_id": "d3228e4268d449e1be1a918e0eac49e3",
+  "plan": {
+    "zone_count": 1,
+    "cluster_topology": [
+      {
+        "memory_per_node": 1024,
+        "node_count_per_zone": 3
+      }
+    ],
+    "kibana": {
+      "version": "5.3.0"
+    }
+  }
+}
