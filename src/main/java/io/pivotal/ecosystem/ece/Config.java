@@ -15,20 +15,17 @@
  * limitations under the License.
  */
 
-package io.pivotal.ecosystem.servicebroker;
+package io.pivotal.ecosystem.ece;
 
-import feign.Feign;
-import feign.gson.GsonDecoder;
-import feign.gson.GsonEncoder;
+import feign.auth.BasicAuthRequestInterceptor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.config.java.AbstractCloudConfig;
 import org.springframework.cloud.service.PooledServiceConnectorConfig;
-import org.springframework.cloud.servicebroker.exception.ServiceBrokerException;
 import org.springframework.cloud.servicebroker.model.BrokerApiVersion;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 
@@ -51,14 +48,24 @@ public class Config extends AbstractCloudConfig {
     }
 
     @Bean
-    public HelloBrokerRepository builder(Environment env) {
-        String url = "http://localhost:8080";
-        log.info("connecting to service at: " + url);
-        try {
-            return Feign.builder().encoder(new GsonEncoder()).decoder(new GsonDecoder()).target(HelloBrokerRepository.class, url);
-        } catch (Throwable t) {
-            log.error("error connecting to service.", t);
-            throw new ServiceBrokerException(t);
-        }
+    public BasicAuthRequestInterceptor basicAuthRequestInterceptor() {
+        return new BasicAuthRequestInterceptor(uid, pw);
     }
+
+    @Bean
+    public EceConfig eceConfig() {
+        return new EceConfig(elasticsearchDomain, elasticsearchPort);
+    }
+
+    @Value("${ECE_ADMIN_UID}")
+    private String uid;
+
+    @Value("${ECE_ADMIN_PW}")
+    private String pw;
+
+    @Value("${ELASTICSEARCH_DOMAIN}")
+    private String elasticsearchDomain;
+
+    @Value("${ELASTICSEARCH_PORT}")
+    private String elasticsearchPort;
 }

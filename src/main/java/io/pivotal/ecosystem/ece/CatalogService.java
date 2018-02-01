@@ -15,7 +15,7 @@
  limitations under the License.
  */
 
-package io.pivotal.ecosystem.servicebroker;
+package io.pivotal.ecosystem.ece;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
