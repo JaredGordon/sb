@@ -41,48 +41,30 @@ public class ServiceInstance implements Serializable {
 
     public static final long serialVersionUID = 1L;
 
-//    @JsonSerialize
-//    @JsonProperty("id")
-//    @Id
-//    private String id;
-
     @JsonSerialize
-//    @JsonProperty("service_instance_id")
     @Id
     private String service_instance_id;
 
     @JsonSerialize
-//    @JsonProperty("organization_guid")
     private String organization_guid;
 
     @JsonSerialize
-//    @JsonProperty("plan_id")
     private String plan_id;
 
     @JsonSerialize
-//    @JsonProperty("service_id")
-//    @Id
     private String service_id;
 
     @JsonSerialize
-//    @JsonProperty("space_guid")
     private String space_guid;
 
     @JsonSerialize
-//    @JsonProperty("parameters")
     private final Map<String, Object> parameters = new HashMap<>();
 
     @JsonSerialize
-//    @JsonProperty("lastOperation")
     private GetLastServiceOperationResponse lastOperation;
 
     @JsonSerialize
-//    @JsonProperty("accepts_incomplete")
     private boolean accepts_incomplete = false;
-
-//    @JsonSerialize
-//    @JsonProperty("deleted")
-//    private boolean deleted = false;
 
     public ServiceInstance() {
         super();
@@ -96,12 +78,7 @@ public class ServiceInstance implements Serializable {
         setPlan_id(request.getPlanId());
         setService_id(request.getServiceDefinitionId());
         setSpace_guid(request.getSpaceGuid());
-
-//        log.info("processing parameters...");
-        if (request.getParameters() != null) {
-            getParameters().putAll(request.getParameters());
-        }
-//        log.info("processed parameters: ", request.getParameters());
+        processParameters(request.getParameters());
     }
 
     public ServiceInstance(UpdateServiceInstanceRequest request) {
@@ -109,56 +86,20 @@ public class ServiceInstance implements Serializable {
         setService_instance_id(request.getServiceInstanceId());
         setPlan_id(request.getPlanId());
         setService_id(request.getServiceDefinitionId());
-        if (request.getParameters() != null) {
-            getParameters().putAll(request.getParameters());
-        }
+        processParameters(request.getParameters());
     }
 
-//    public void addParameter(@NonNull String key, @NonNull Object value) {
-//        this.parameters.put(key, value);
-//    }
-
-//    public Object getParameter(@NonNull String key) {
-//        return this.parameters.get(key);
-//    }
-
-//    public GetLastServiceOperationResponse getLastOperation() {
-//        return this.lastOperation;
-//    }
-
-//    public void setLastOperation(GetLastServiceOperationResponse lastOperation) {
-//        this.lastOperation = lastOperation;
-//    }
-
-//    public CreateServiceInstanceResponse getCreateResponse() {
-//        CreateServiceInstanceResponse resp = new CreateServiceInstanceResponse();
-//        resp.withAsync(true);
-//        return resp;
-//    }
-//
-//    public DeleteServiceInstanceResponse getDeleteResponse() {
-//        DeleteServiceInstanceResponse resp = new DeleteServiceInstanceResponse();
-//        resp.withAsync(true);
-//        return resp;
-//    }
-//
-//    public UpdateServiceInstanceResponse getUpdateResponse() {
-//        UpdateServiceInstanceResponse resp = new UpdateServiceInstanceResponse();
-//        resp.withAsync(true);
-//        return resp;
-//    }
+    private void processParameters(Map<String, Object> m) {
+        log.debug("processing parameters...");
+        if (m != null) {
+            this.parameters.putAll(m);
+        }
+        log.debug("processed parameters: ", m);
+    }
 
     private boolean isInState(@NonNull OperationState state) {
-//        lastOperationSanity();
-
         return getLastOperation().getState().equals(state);
     }
-
-//    private boolean isOperation(@NonNull String operation) {
-//        lastOperationSanity();
-//
-//        return getLastOperation().getOperation().equals(operation);
-//    }
 
     public boolean isInProgress() {
         return isInState(OperationState.IN_PROGRESS);
@@ -172,17 +113,4 @@ public class ServiceInstance implements Serializable {
         return isInState(OperationState.SUCCEEDED);
     }
 
-//    public boolean isCreate() {
-//        return isOperation(LastOperation.CREATE);
-//    }
-//
-//    public boolean isDelete() {
-//        return isOperation(LastOperation.DELETE);
-//    }
-
-//    private void lastOperationSanity() {
-//        if (getLastOperation() == null || getLastOperation().getState() == null || getLastOperation().getOperation() == null) {
-//            throw new ServiceBrokerException("instance has no last operation.");
-//        }
-//    }
 }

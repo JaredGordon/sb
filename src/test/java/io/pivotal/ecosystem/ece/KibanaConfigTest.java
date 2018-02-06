@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -41,10 +42,11 @@ public class KibanaConfigTest {
     @Test
     public void testWithInstanceAndDefaults() {
         ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        KibanaConfig kc = new KibanaConfig(cc);
+        Map<String, Object> m = new HashMap<>();
+        KibanaConfig kc = new KibanaConfig(cc, m);
 
         assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node), kc.getConfig().get(KibanaConfig.kibanaApiKeys.memory_per_node));
-        assertEquals("kibana" + cc.getCredentials().get(ClusterConfig.credentialKeys.clusterName), kc.getClusterName());
+        assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id), kc.getConfig().get(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id));
         assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.node_count_per_zone), kc.getConfig().get(KibanaConfig.kibanaApiKeys.node_count_per_zone));
         assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.zone_count), kc.getConfig().get(KibanaConfig.kibanaApiKeys.zone_count));
 
@@ -59,7 +61,7 @@ public class KibanaConfigTest {
         Map<String, Object> m = TestConfig.defaultsServiceInstance();
 
         ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, m);
-        KibanaConfig kc = new KibanaConfig(cc);
+        KibanaConfig kc = new KibanaConfig(cc, m);
         String s2 = kc.getCreateClusterBody();
         assertNotNull(s2);
         assertEquals(s1, s2);
@@ -71,10 +73,12 @@ public class KibanaConfigTest {
         assertNotNull(o);
 
         ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        KibanaConfig kc = new KibanaConfig(cc);
 
-        Map<String, Object> m = kc.extractCredentials(o);
-        assertNotNull(m);
-        assertEquals("aKibanaClusterId", m.get(ClusterConfig.credentialKeys.kibanaClusterId.name()));
+        Map<String, Object> m = new HashMap<>();
+        KibanaConfig kc = new KibanaConfig(cc, m);
+
+        Map<String, Object> m2 = kc.extractCredentials(o);
+        assertNotNull(m2);
+        assertEquals("aKibanaClusterId", m2.get(ClusterConfig.credentialKeys.kibanaClusterId.name()));
     }
 }

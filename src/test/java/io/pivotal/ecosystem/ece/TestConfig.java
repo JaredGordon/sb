@@ -63,19 +63,8 @@ class TestConfig {
         return req;
     }
 
-    private static CreateServiceInstanceRequest createServiceInstanceRequestCustom(String id) {
-        CreateServiceInstanceRequest req = new CreateServiceInstanceRequest(SD_ID, PLAN_ID, ORG_GUID, SPACE_GUID, getCustomParameters());
-        req.withServiceInstanceId(id);
-        req.withAsyncAccepted(true);
-        return req;
-    }
-
     static ServiceInstance defaultsServiceInstance(String id) {
         return new ServiceInstance(createServiceInstanceRequestDefaults(id));
-    }
-
-    static ServiceInstance customServiceInstance(String id) {
-        return new ServiceInstance(createServiceInstanceRequestCustom(id));
     }
 
     static Map<String, Object> getDefaultsParameters() {
@@ -103,8 +92,7 @@ class TestConfig {
     }
 
     static Map<String, Object> defaultsServiceInstance() {
-        Map<String, Object> m = new HashMap<>();
-        return m;
+        return new HashMap<>();
     }
 
     static Map<String, Object> customServiceInstance() {
@@ -116,7 +104,9 @@ class TestConfig {
     private static Map<String, Object> getCustomParameters() {
         Map<String, Object> m = new HashMap<>();
         m.put(ClusterConfig.eceApiKeys.elasticsearch_version.name(), "1.2.3");
-        m.put(ClusterConfig.credentialKeys.clusterName.name(), "aClusterName");
-        return m;
+        m.put(ClusterConfig.eceApiKeys.cluster_name.name(), "aClusterName");
+        Map<String, Object> ec = new HashMap<>();
+        ec.put(ClusterConfig.ELASTIC_SEARCH, m);
+        return ec;
     }
 }

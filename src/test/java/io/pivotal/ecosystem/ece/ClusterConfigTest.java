@@ -38,12 +38,13 @@ public class ClusterConfigTest {
     private EceConfig eceConfig;
 
     @Test
-    public void testWithInstanceAndDefaults() {
+    public void testWithInstanceAndDefaults() throws Exception {
         ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.getDefaultsParameters());
         assertNotNull(cc);
-        String clusterName = cc.getCredentials().get(credentialKeys.clusterName);
-        assertNotNull(clusterName);
-        assertFalse(TestConfig.SI_ID.equals(clusterName));
+        cc.loadCredentials(TestConfig.fromJson("createClusterResponse.json"));
+        String id = cc.getCredentials().get(credentialKeys.clusterId);
+        assertNotNull(id);
+        assertFalse(TestConfig.SI_ID.equals(id));
         assertEquals(ClusterConfig.DEFAULT_MEMORY_PER_NODE, cc.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node));
         assertEquals(ClusterConfig.DEFAULT_NODE_COUNT_PER_ZONE, cc.getConfig().get(ClusterConfig.eceApiKeys.node_count_per_zone));
         assertEquals(ClusterConfig.DEFAULT_TOPOLOGY_TYPE, cc.getConfig().get(ClusterConfig.eceApiKeys.topology_type));
@@ -77,7 +78,7 @@ public class ClusterConfigTest {
         assertNotNull(o);
 
         ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        cc.extractCredentials(o);
+        cc.loadCredentials(o);
         EnumMap<credentialKeys, String> m = cc.getCredentials();
         assertNotNull(m);
         assertEquals("aClusterId", m.get(credentialKeys.clusterId));

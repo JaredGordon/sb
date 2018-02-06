@@ -21,6 +21,7 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +44,7 @@ class EceClient {
         log.info("creating cluster: " + cc.getClusterName());
 
         Object resp = eceRepo.createCluster(cc.getCreateClusterBody());
-        cc.extractCredentials(resp);
+        cc.loadCredentials(resp);
         instance.getParameters().putAll(cc.credsToParams());
     }
 
@@ -78,8 +79,8 @@ class EceClient {
     }
 
     private void createKibana(ServiceInstance instance) {
-        KibanaConfig kc = new KibanaConfig(new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters()));
-        log.info("creating kibana cluster: " + kc.getClusterName());
+        KibanaConfig kc = new KibanaConfig(new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters()), instance.getParameters());
+        log.info("creating kibana cluster: " + kc.getConfig().get(KibanaConfig.kibanaApiKeys.kibana_cluster_id));
 
         Object resp = eceRepo.createKibana(kc.getCreateClusterBody());
         instance.getParameters().putAll(kc.extractCredentials(resp));

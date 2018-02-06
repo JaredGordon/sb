@@ -21,6 +21,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.jayway.jsonpath.JsonPath;
+import lombok.NonNull;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -28,8 +29,13 @@ import java.util.Map;
 
 class KibanaConfig {
 
-    private static final String DEFAULT_KIBANA_VERSION = "5.3.0";
     private static final String KIBANA = "kibana";
+
+    private static final String DEFAULT_ZONES_COUNT = "1";
+    private static final String DEFAULT_MEMORY_PER_NODE = "1024";
+    private static final String DEFAULT_KIBANA_VERSION = "5.3.0";
+    private static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
+    private static final String DEFAULT_TOPOLOGY_TYPE = "default";
 
     private final EnumMap<kibanaApiKeys, String> config = new EnumMap<>(KibanaConfig.kibanaApiKeys.class);
 
@@ -45,19 +51,36 @@ class KibanaConfig {
         plan
     }
 
-    ClusterConfig clusterConfig;
+    private ClusterConfig clusterConfig;
 
-    KibanaConfig(ClusterConfig clusterConfig) {
+    KibanaConfig(@NonNull ClusterConfig clusterConfig, @NonNull Map<String, Object> parameters) {
         super();
         this.clusterConfig = clusterConfig;
+        initConfig(parameters);
     }
 
-    String getClusterName() {
-        return KIBANA + clusterConfig.getCredentials().get(ClusterConfig.credentialKeys.clusterName);
-    }
+    private void initConfig(Map<String, Object> parameters) {
+        config.put(kibanaApiKeys.elasticsearch_cluster_id, clusterConfig.getClusterId());
 
-    private String getEceClusterId() {
-        return clusterConfig.getCredentials().get(ClusterConfig.credentialKeys.clusterId);
+        if (!parameters.containsKey(KIBANA)) {
+            config.put(kibanaApiKeys.cluster_name, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
+            config.put(kibanaApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+            config.put(kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
+            config.put(kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
+            config.put(kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
+            config.put(kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> m = (Map<String, Object>) parameters.get(KIBANA);
+
+        loadValue(kibanaApiKeys.cluster_name, m, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
+        loadValue(kibanaApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
+        loadValue(kibanaApiKeys.version, m, DEFAULT_KIBANA_VERSION);
+        loadValue(kibanaApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
+        loadValue(kibanaApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValue(kibanaApiKeys.cluster_topology, m, DEFAULT_TOPOLOGY_TYPE);
     }
 
     public EnumMap<kibanaApiKeys, String> getConfig() {
@@ -71,8 +94,8 @@ class KibanaConfig {
         JsonArray clusterTopology = new JsonArray();
         JsonObject topology = new JsonObject();
 
-        cluster.addProperty(kibanaApiKeys.cluster_name.name(), getClusterName());
-        cluster.addProperty(kibanaApiKeys.elasticsearch_cluster_id.name(), getEceClusterId());
+        cluster.addProperty(kibanaApiKeys.cluster_name.name(), config.get(kibanaApiKeys.cluster_name));
+        cluster.addProperty(kibanaApiKeys.elasticsearch_cluster_id.name(), config.get(kibanaApiKeys.elasticsearch_cluster_id));
         plan.addProperty(kibanaApiKeys.zone_count.name(), Integer.valueOf(clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.zone_count)));
 
         topology.addProperty(kibanaApiKeys.memory_per_node.name(), Integer.valueOf(clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node)));
@@ -96,5 +119,16 @@ class KibanaConfig {
 
     static boolean wasKibanaRequested(Map<String, Object> parameters) {
         return parameters.containsKey(ClusterConfig.credentialKeys.kibanaClusterId.name());
+    }
+
+    private String getValueOrDefault(kibanaApiKeys key, Map<String, Object> parameters, String defaultValue) {
+        if (!parameters.containsKey(key.name())) {
+            return defaultValue;
+        }
+        return parameters.get(key.name()).toString();
+    }
+
+    private void loadValue(kibanaApiKeys key, Map<String, Object> map, String defaultValue) {
+        config.put(key, getValueOrDefault(key, map, defaultValue));
     }
 }

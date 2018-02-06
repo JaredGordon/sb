@@ -36,7 +36,6 @@ public class ClusterConfig {
     }
 
     public enum credentialKeys {
-        clusterName,
         clusterId,
         username,
         password,
@@ -52,11 +51,13 @@ public class ClusterConfig {
     private final EnumMap<credentialKeys, String> creds = new EnumMap<>(credentialKeys.class);
     private final EnumMap<eceApiKeys, String> config = new EnumMap<>(eceApiKeys.class);
 
-    public static final String DEFAULT_ZONES_COUNT = "1";
-    public static final String DEFAULT_MEMORY_PER_NODE = "1024";
-    public static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
-    public static final String DEFAULT_TOPOLOGY_TYPE = "default";
-    public static final String DEFAULT_ELASTICSEARCH_VERSION = "5.4.1";
+    public static final String ELASTIC_SEARCH = "elasticsearch";
+
+    static final String DEFAULT_ZONES_COUNT = "1";
+    static final String DEFAULT_MEMORY_PER_NODE = "1024";
+    static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
+    static final String DEFAULT_TOPOLOGY_TYPE = "default";
+    private static final String DEFAULT_ELASTICSEARCH_VERSION = "5.4.1";
 
     public enum eceApiKeys {
         cluster_name,
@@ -80,8 +81,7 @@ public class ClusterConfig {
     ClusterConfig(@NonNull EceConfig eceConfig, @NonNull String clusterId, @NonNull Map<String, Object> parameters) {
         super();
         this.eceConfig = eceConfig;
-        initCreds(clusterId, parameters);
-        initConfig(parameters);
+        initConfig(clusterId, parameters);
     }
 
     ClusterConfig(@NonNull EceConfig eceConfig, @NonNull String clusterId, @NonNull Map<String, Object> parameters, boolean kibana) {
@@ -89,27 +89,31 @@ public class ClusterConfig {
         parameters.put(credentialKeys.enableKibana.name(), kibana);
     }
 
-    private void initCreds(String clusterId, Map<String, Object> parameters) {
-        EnumMap<credentialKeys, String> e = EnumUtil.paramsToCreds(parameters);
-        e.put(credentialKeys.clusterId, clusterId);
-        if (!e.containsKey(credentialKeys.clusterName)) {
-            e.put(credentialKeys.clusterName, clusterId);
+    private void initConfig(String clusterId, Map<String, Object> parameters) {
+
+        config.put(eceApiKeys.elasticsearch_cluster_id, clusterId);
+
+        if (!parameters.containsKey(ELASTIC_SEARCH)) {
+            config.put(eceApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+            config.put(eceApiKeys.elasticsearch_version, DEFAULT_ELASTICSEARCH_VERSION);
+            config.put(eceApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
+            config.put(eceApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
+            config.put(eceApiKeys.topology_type, DEFAULT_TOPOLOGY_TYPE);
+            config.put(eceApiKeys.cluster_name, clusterId);
+
+            return;
         }
 
-        creds.putAll(e);
-    }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> m = (Map<String, Object>) parameters.get(ELASTIC_SEARCH);
 
-    private void initConfig(Map<String, Object> parameters) {
+        config.put(eceApiKeys.zone_count, getValueOrLoadDefault(eceApiKeys.zone_count, m, DEFAULT_ZONES_COUNT));
+        config.put(eceApiKeys.elasticsearch_version, getValueOrLoadDefault(eceApiKeys.elasticsearch_version, m, DEFAULT_ELASTICSEARCH_VERSION));
+        config.put(eceApiKeys.memory_per_node, getValueOrLoadDefault(eceApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE));
+        config.put(eceApiKeys.node_count_per_zone, getValueOrLoadDefault(eceApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE));
+        config.put(eceApiKeys.topology_type, getValueOrLoadDefault(eceApiKeys.topology_type, m, DEFAULT_TOPOLOGY_TYPE));
 
-
-        EnumMap<eceApiKeys, String> e = EnumUtil.paramsToConfig(parameters);
-        e.put(eceApiKeys.zone_count, getValueOrLoadDefault(eceApiKeys.zone_count, parameters, DEFAULT_ZONES_COUNT));
-        e.put(eceApiKeys.elasticsearch_version, getValueOrLoadDefault(eceApiKeys.elasticsearch_version, parameters, DEFAULT_ELASTICSEARCH_VERSION));
-        e.put(eceApiKeys.memory_per_node, getValueOrLoadDefault(eceApiKeys.memory_per_node, parameters, DEFAULT_MEMORY_PER_NODE));
-        e.put(eceApiKeys.node_count_per_zone, getValueOrLoadDefault(eceApiKeys.node_count_per_zone, parameters, DEFAULT_NODE_COUNT_PER_ZONE));
-        e.put(eceApiKeys.topology_type, getValueOrLoadDefault(eceApiKeys.topology_type, parameters, DEFAULT_TOPOLOGY_TYPE));
-
-        config.putAll(e);
+        config.put(eceApiKeys.cluster_name, getValueOrLoadDefault(eceApiKeys.cluster_name, m, clusterId));
     }
 
     public Map<String, Object> credsToParams() {
@@ -121,13 +125,12 @@ public class ClusterConfig {
         return m;
     }
 
-    //convenience
     String getClusterName() {
-        return creds.get(credentialKeys.clusterName);
+        return config.get(eceApiKeys.cluster_name);
     }
 
     String getClusterId() {
-        return creds.get(credentialKeys.clusterId);
+        return config.get(eceApiKeys.elasticsearch_cluster_id);
     }
 
     private String getValueOrLoadDefault(eceApiKeys key, Map<String, Object> parameters, String defaultValue) {
@@ -147,7 +150,7 @@ public class ClusterConfig {
         JsonArray clusterTopology = new JsonArray();
         JsonObject topology = new JsonObject();
 
-        cluster.addProperty(eceApiKeys.cluster_name.name(), getClusterName());
+        cluster.addProperty(eceApiKeys.cluster_name.name(), config.get(eceApiKeys.cluster_name));
         elasticSearch.addProperty(eceApiKeys.version.name(), config.get(eceApiKeys.elasticsearch_version));
         plan.add(eceApiKeys.elasticsearch.name(), elasticSearch);
         plan.addProperty(eceApiKeys.zone_count.name(), Integer.valueOf(config.get(eceApiKeys.zone_count)));
@@ -163,12 +166,6 @@ public class ClusterConfig {
     }
 
     EnumMap<credentialKeys, String> getCredentials() {
-        creds.put(credentialKeys.host, eceConfig.getElasticsearchDomain());
-        creds.put(credentialKeys.port, eceConfig.getElasticsearchPort());
-        creds.put(credentialKeys.uri, "ece://" + getClusterId() + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
-        creds.put(credentialKeys.eceEndpoint, "https://" + getClusterId() + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
-        creds.put(credentialKeys.kibanaEndpoint, "https://" + creds.get(credentialKeys.kibanaClusterId) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
-
         return creds;
     }
 
@@ -176,11 +173,17 @@ public class ClusterConfig {
         return config;
     }
 
-    void extractCredentials(Object createClusterResponse) {
+    void loadCredentials(Object createClusterResponse) {
         DocumentContext dc = JsonPath.parse(createClusterResponse);
         creds.put(credentialKeys.clusterId, dc.read("$." + eceApiKeys.elasticsearch_cluster_id.name()));
         creds.put(credentialKeys.username, dc.read("$." + eceApiKeys.credentials.name() + "." + eceApiKeys.username.name()));
         creds.put(credentialKeys.password, dc.read("$." + eceApiKeys.credentials.name() + "." + eceApiKeys.password.name()));
+
+        creds.put(credentialKeys.host, eceConfig.getElasticsearchDomain());
+        creds.put(credentialKeys.port, eceConfig.getElasticsearchPort());
+        creds.put(credentialKeys.uri, "ece://" + config.get(eceApiKeys.elasticsearch_cluster_id) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        creds.put(credentialKeys.eceEndpoint, "https://" + config.get(eceApiKeys.elasticsearch_cluster_id) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        creds.put(credentialKeys.kibanaEndpoint, "https://" + creds.get(credentialKeys.kibanaClusterId) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
     }
 
     static String getClusterId(Map<String, Object> parameters) {
