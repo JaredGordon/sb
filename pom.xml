@@ -78,7 +78,7 @@
     </dependencies>
 
     <build>
-        <finalName>sb-broker</finalName>
+        <finalName>ece-service-broker</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

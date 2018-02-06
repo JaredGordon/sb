@@ -1,8 +1,8 @@
 {
   "services": [
     {
-      "id": "ece-sb",
-      "name": "ece-sb",
+      "id": "ece",
+      "name": "ece",
       "description": "Elastic Cloud Enterprise for Pivotal Cloud Foundry",
       "bindable": true,
       "tags": [

@@ -1,12 +1,17 @@
 ---
 applications:
-- name: sb-broker
+- name: ece-broker
   memory: 1G
   instances: 1
   buildpack: java_buildpack_offline
-  path: target/sb-broker.jar
-  services: [ hello-ds ]
+  path: target/ece-service-broker.jar
+  services: [ece-redis]
   env:
     SPRING_PROFILES_ACTIVE: cloud
-    SECURITY_USER_NAME: sbUser
-    SECURITY_USER_PASSWORD: sbPassword
+    ECE_URL: 10.20.30.40
+    ECE_ADMIN_UID: secret
+    ECE_ADMIN_PW: secret
+    ELASTICSEARCH_DOMAIN: secret
+    ELASTICSEARCH_PORT: secret
+    SECURITY_USER_NAME: someUserNameForTheBroker
+    SECURITY_USER_PASSWORD: somePasswordForTheBroker

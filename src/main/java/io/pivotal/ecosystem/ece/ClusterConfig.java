@@ -93,27 +93,15 @@ public class ClusterConfig {
 
         config.put(eceApiKeys.elasticsearch_cluster_id, clusterId);
 
-        if (!parameters.containsKey(ELASTIC_SEARCH)) {
-            config.put(eceApiKeys.zone_count, DEFAULT_ZONES_COUNT);
-            config.put(eceApiKeys.elasticsearch_version, DEFAULT_ELASTICSEARCH_VERSION);
-            config.put(eceApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
-            config.put(eceApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
-            config.put(eceApiKeys.topology_type, DEFAULT_TOPOLOGY_TYPE);
-            config.put(eceApiKeys.cluster_name, clusterId);
-
-            return;
-        }
-
         @SuppressWarnings("unchecked")
         Map<String, Object> m = (Map<String, Object>) parameters.get(ELASTIC_SEARCH);
 
-        config.put(eceApiKeys.zone_count, getValueOrLoadDefault(eceApiKeys.zone_count, m, DEFAULT_ZONES_COUNT));
-        config.put(eceApiKeys.elasticsearch_version, getValueOrLoadDefault(eceApiKeys.elasticsearch_version, m, DEFAULT_ELASTICSEARCH_VERSION));
-        config.put(eceApiKeys.memory_per_node, getValueOrLoadDefault(eceApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE));
-        config.put(eceApiKeys.node_count_per_zone, getValueOrLoadDefault(eceApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE));
-        config.put(eceApiKeys.topology_type, getValueOrLoadDefault(eceApiKeys.topology_type, m, DEFAULT_TOPOLOGY_TYPE));
-
-        config.put(eceApiKeys.cluster_name, getValueOrLoadDefault(eceApiKeys.cluster_name, m, clusterId));
+        loadValueOrDefault(eceApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
+        loadValueOrDefault(eceApiKeys.elasticsearch_version, m, DEFAULT_ELASTICSEARCH_VERSION);
+        loadValueOrDefault(eceApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
+        loadValueOrDefault(eceApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValueOrDefault(eceApiKeys.topology_type, m, DEFAULT_TOPOLOGY_TYPE);
+        loadValueOrDefault(eceApiKeys.cluster_name, m, clusterId);
     }
 
     public Map<String, Object> credsToParams() {
@@ -131,16 +119,6 @@ public class ClusterConfig {
 
     String getClusterId() {
         return config.get(eceApiKeys.elasticsearch_cluster_id);
-    }
-
-    private String getValueOrLoadDefault(eceApiKeys key, Map<String, Object> parameters, String defaultValue) {
-        if (!parameters.containsKey(key.name())) {
-            config.put(key, defaultValue);
-        } else {
-            config.put(key, parameters.get(key.name()).toString());
-        }
-
-        return config.get(key);
     }
 
     String getCreateClusterBody() {
@@ -196,5 +174,13 @@ public class ClusterConfig {
             return false;
         }
         return Boolean.valueOf(o.toString());
+    }
+
+    private void loadValueOrDefault(eceApiKeys key, Map<String, Object> parameters, String defaultValue) {
+        if (parameters == null || !parameters.containsKey(key.name())) {
+            config.put(key, defaultValue);
+        } else {
+            config.put(key, parameters.get(key.name()).toString());
+        }
     }
 }

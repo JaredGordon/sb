@@ -62,25 +62,15 @@ class KibanaConfig {
     private void initConfig(Map<String, Object> parameters) {
         config.put(kibanaApiKeys.elasticsearch_cluster_id, clusterConfig.getClusterId());
 
-        if (!parameters.containsKey(KIBANA)) {
-            config.put(kibanaApiKeys.cluster_name, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
-            config.put(kibanaApiKeys.zone_count, DEFAULT_ZONES_COUNT);
-            config.put(kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
-            config.put(kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
-            config.put(kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
-            config.put(kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
-            return;
-        }
-
         @SuppressWarnings("unchecked")
         Map<String, Object> m = (Map<String, Object>) parameters.get(KIBANA);
 
-        loadValue(kibanaApiKeys.cluster_name, m, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
-        loadValue(kibanaApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
-        loadValue(kibanaApiKeys.version, m, DEFAULT_KIBANA_VERSION);
-        loadValue(kibanaApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
-        loadValue(kibanaApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
-        loadValue(kibanaApiKeys.cluster_topology, m, DEFAULT_TOPOLOGY_TYPE);
+        loadValueOrDefault(kibanaApiKeys.cluster_name, m, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
+        loadValueOrDefault(kibanaApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
+        loadValueOrDefault(kibanaApiKeys.version, m, DEFAULT_KIBANA_VERSION);
+        loadValueOrDefault(kibanaApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
+        loadValueOrDefault(kibanaApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValueOrDefault(kibanaApiKeys.cluster_topology, m, DEFAULT_TOPOLOGY_TYPE);
     }
 
     public EnumMap<kibanaApiKeys, String> getConfig() {
@@ -121,14 +111,11 @@ class KibanaConfig {
         return parameters.containsKey(ClusterConfig.credentialKeys.kibanaClusterId.name());
     }
 
-    private String getValueOrDefault(kibanaApiKeys key, Map<String, Object> parameters, String defaultValue) {
-        if (!parameters.containsKey(key.name())) {
-            return defaultValue;
+    private void loadValueOrDefault(kibanaApiKeys key, Map<String, Object> parameters, String defaultValue) {
+        if (parameters == null || !parameters.containsKey(key.name())) {
+            config.put(key, defaultValue);
+        } else {
+            config.put(key, parameters.get(key.name()).toString());
         }
-        return parameters.get(key.name()).toString();
-    }
-
-    private void loadValue(kibanaApiKeys key, Map<String, Object> map, String defaultValue) {
-        config.put(key, getValueOrDefault(key, map, defaultValue));
     }
 }
