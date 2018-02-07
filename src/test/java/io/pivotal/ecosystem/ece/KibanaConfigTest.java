@@ -25,7 +25,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -39,11 +38,14 @@ public class KibanaConfigTest {
     @Autowired
     private EceConfig eceConfig;
 
+    @Autowired
+    private EnumUtil enumUtil;
+
     @Test
     public void testWithInstanceAndDefaults() {
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        Map<String, Object> m = new HashMap<>();
-        KibanaConfig kc = new KibanaConfig(cc, m);
+        ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
+        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
 
         assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node), kc.getConfig().get(KibanaConfig.kibanaApiKeys.memory_per_node));
         assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id), kc.getConfig().get(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id));
@@ -58,10 +60,11 @@ public class KibanaConfigTest {
         String s1 = TestConfig.toJson(TestConfig.fromJson("createKibanaRequestBody.json"));
         assertNotNull(s1);
 
-        Map<String, Object> m = TestConfig.defaultsServiceInstance();
+        ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, m);
-        KibanaConfig kc = new KibanaConfig(cc, m);
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
+        cc.getConfig().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id, TestConfig.CLUSTER_ID);
+        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
         String s2 = kc.getCreateClusterBody();
         assertNotNull(s2);
         assertEquals(s1, s2);
@@ -72,10 +75,10 @@ public class KibanaConfigTest {
         Object o = TestConfig.fromJson("createKibanaResponse.json");
         assertNotNull(o);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
+        ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
 
-        Map<String, Object> m = new HashMap<>();
-        KibanaConfig kc = new KibanaConfig(cc, m);
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
+        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
 
         Map<String, Object> m2 = kc.extractCredentials(o);
         assertNotNull(m2);

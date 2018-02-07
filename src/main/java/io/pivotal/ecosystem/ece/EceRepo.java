@@ -17,29 +17,34 @@
 
 package io.pivotal.ecosystem.ece;
 
-import org.springframework.cloud.netflix.feign.FeignClient;
+import feign.Body;
+import feign.Headers;
+import feign.Param;
+import feign.RequestLine;
 import org.springframework.stereotype.Repository;
-import org.springframework.web.bind.annotation.*;
 
 @Repository
-@FeignClient(url = "${ECE_URL}", name = "ece")
 interface EceRepo {
 
-    @GetMapping(value = "/api/v1/clusters/elasticsearch")
+    @RequestLine("GET /clusters/elasticsearch")
     Object getClustersInfo();
 
-    @GetMapping(value = "/api/v1/clusters/elasticsearch/{clusterId}")
-    Object getClusterInfo(@PathVariable(value = "clusterId") String clusterId);
+    @RequestLine("GET /clusters/elasticsearch/{clusterId}")
+    Object getClusterInfo(@Param("clusterId") String clusterId);
 
-    @PostMapping(value = "/api/v1/clusters/elasticsearch", consumes = "application/json")
-    Object createCluster(@RequestBody String body);
+    @RequestLine("POST /clusters/elasticsearch")
+    @Headers("Content-Type: application/json")
+    @Body("{body}")
+    Object createCluster(@Param("body") Object body);
 
-    @DeleteMapping(value = "/api/v1/clusters/elasticsearch/{clusterId}")
-    Object deleteCluster(@PathVariable("clusterId") String clusterId);
+    @RequestLine("DELETE /clusters/elasticsearch/{clusterId}")
+    Object deleteCluster(@Param("clusterId") String clusterId);
 
-    @PostMapping(value = "/api/v1/clusters/elasticsearch/{clusterId}/_shutdown")
-    Object shutdownCluster(@PathVariable("clusterId") String clusterId);
+    @RequestLine("POST /clusters/elasticsearch/{clusterId}/_shutdown")
+    Object shutdownCluster(@Param("clusterId") String clusterId);
 
-    @PostMapping(value = "/api/v1/clusters/kibana", consumes = "application/json")
-    Object createKibana(@RequestBody String body);
+    @RequestLine("POST /clusters/kibana")
+    @Headers("Content-Type: application/json")
+    @Body("{body}")
+    Object createKibana(@Param("body") Object body);
 }

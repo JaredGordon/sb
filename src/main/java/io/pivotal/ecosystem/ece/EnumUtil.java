@@ -1,48 +1,69 @@
 package io.pivotal.ecosystem.ece;
 
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import org.springframework.stereotype.Component;
 
-public class EnumUtil {
+import java.util.*;
 
-    private static final List<String> credKeys = EnumUtil.getEnumNames(ClusterConfig.credentialKeys.class);
+@Component
+class EnumUtil {
+
     private static final List<String> configKeys = EnumUtil.getEnumNames(ClusterConfig.eceApiKeys.class);
     private static final List<String> kibanaKeys = EnumUtil.getEnumNames(KibanaConfig.kibanaApiKeys.class);
 
-    static List<String> getEnumNames(Class<? extends Enum<?>> e) {
+    private static List<String> getEnumNames(Class<? extends Enum<?>> e) {
         return Arrays.asList(Arrays.toString(e.getEnumConstants()).replaceAll("^.|.$", "").split(", "));
     }
 
-    //generics experts could do better than this...
-    static EnumMap<ClusterConfig.credentialKeys, String> paramsToCreds(Map<String, Object> parameters) {
-        EnumMap<ClusterConfig.credentialKeys, String> e = new EnumMap<>(ClusterConfig.credentialKeys.class);
-        for (String key : parameters.keySet()) {
-            if (credKeys.contains(key)) {
-                e.put(ClusterConfig.credentialKeys.valueOf(key), parameters.get(key).toString());
-            }
-        }
-        return e;
-    }
-
-    static EnumMap<ClusterConfig.eceApiKeys, String> paramsToConfig(Map<String, Object> parameters) {
+    EnumMap<ClusterConfig.eceApiKeys, String> paramsToConfig(ServiceInstance instance) {
         EnumMap<ClusterConfig.eceApiKeys, String> e = new EnumMap<>(ClusterConfig.eceApiKeys.class);
-        for (String key : parameters.keySet()) {
-            if (configKeys.contains(key)) {
-                e.put(ClusterConfig.eceApiKeys.valueOf(key), parameters.get(key).toString());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parameters = (Map<String, Object>) instance.getParameters().get(ClusterConfig.ELASTIC_SEARCH);
+
+        if (parameters != null) {
+            for (String key : parameters.keySet()) {
+                if (configKeys.contains(key)) {
+                    e.put(ClusterConfig.eceApiKeys.valueOf(key), parameters.get(key).toString());
+                }
             }
         }
         return e;
     }
 
-    static EnumMap<KibanaConfig.kibanaApiKeys, String> paramsToKibanaConfig(Map<String, Object> parameters) {
+    EnumMap<KibanaConfig.kibanaApiKeys, String> paramsToKibanaConfig(ServiceInstance instance) {
         EnumMap<KibanaConfig.kibanaApiKeys, String> e = new EnumMap<>(KibanaConfig.kibanaApiKeys.class);
-        for (String key : parameters.keySet()) {
-            if (kibanaKeys.contains(key)) {
-                e.put(KibanaConfig.kibanaApiKeys.valueOf(key), parameters.get(key).toString());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parameters = (Map<String, Object>) instance.getParameters().get(KibanaConfig.KIBANA);
+
+        if (parameters != null) {
+            for (String key : parameters.keySet()) {
+                if (kibanaKeys.contains(key)) {
+                    e.put(KibanaConfig.kibanaApiKeys.valueOf(key), parameters.get(key).toString());
+                }
             }
         }
         return e;
+    }
+
+    void enumsToParams(ClusterConfig config, ServiceInstance instance) {
+        enumsToParams(config.getConfig(), ClusterConfig.ELASTIC_SEARCH, instance);
+        enumsToParams(config.getCredentials(), ClusterConfig.CREDENTIALS, instance);
+    }
+
+    void enumsToParams(KibanaConfig config, ServiceInstance instance) {
+        enumsToParams(config.getConfig(), KibanaConfig.KIBANA, instance);
+    }
+
+    void enumsToParams(EnumMap<?, String> config, String key, ServiceInstance instance) {
+        if (!instance.getParameters().containsKey(key)) {
+            instance.getParameters().put(key, new HashMap<String, Object>());
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> m = (Map<String, Object>) instance.getParameters().get(key);
+        for (Enum<?> e : config.keySet()) {
+            m.put(e.name(), config.get(e));
+        }
     }
 }

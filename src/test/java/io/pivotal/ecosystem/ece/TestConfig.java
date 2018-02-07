@@ -40,7 +40,7 @@ class TestConfig {
     private static final String SPACE_GUID = "aSpaceGuid";
 
     static final String CLUSTER_ID = "d3228e4268d449e1be1a918e0eac49e3";
-    static final String CLUSTER_NAME = "admin-console-elasticsearch";
+    static final String CLUSTER_NAME = "my-cluster";
 
     @MockBean
     public ServiceInstanceRepository serviceInstanceRepository;
@@ -50,6 +50,11 @@ class TestConfig {
 
     @MockBean
     EceRepo eceRepo;
+
+    @Bean
+    public EnumUtil enumUtil() {
+        return new EnumUtil();
+    }
 
     @Bean
     public CatalogService catalogService() {
@@ -63,8 +68,19 @@ class TestConfig {
         return req;
     }
 
+    private static CreateServiceInstanceRequest createServiceInstanceRequestCustom(String id) {
+        CreateServiceInstanceRequest req = new CreateServiceInstanceRequest(SD_ID, PLAN_ID, ORG_GUID, SPACE_GUID, getCustomParameters());
+        req.withServiceInstanceId(id);
+        req.withAsyncAccepted(true);
+        return req;
+    }
+
     static ServiceInstance defaultsServiceInstance(String id) {
         return new ServiceInstance(createServiceInstanceRequestDefaults(id));
+    }
+
+    static ServiceInstance customServiceInstance(String id) {
+        return new ServiceInstance(createServiceInstanceRequestCustom(id));
     }
 
     static Map<String, Object> getDefaultsParameters() {
@@ -95,16 +111,10 @@ class TestConfig {
         return new HashMap<>();
     }
 
-    static Map<String, Object> customServiceInstance() {
-        Map<String, Object> m = defaultsServiceInstance();
-        m.putAll(getCustomParameters());
-        return m;
-    }
-
     private static Map<String, Object> getCustomParameters() {
         Map<String, Object> m = new HashMap<>();
         m.put(ClusterConfig.eceApiKeys.elasticsearch_version.name(), "1.2.3");
-        m.put(ClusterConfig.eceApiKeys.cluster_name.name(), "aClusterName");
+        m.put(ClusterConfig.eceApiKeys.cluster_name.name(), "my-cluster");
         Map<String, Object> ec = new HashMap<>();
         ec.put(ClusterConfig.ELASTIC_SEARCH, m);
         return ec;

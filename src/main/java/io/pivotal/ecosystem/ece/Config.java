@@ -17,7 +17,10 @@
 
 package io.pivotal.ecosystem.ece;
 
+import feign.Feign;
 import feign.auth.BasicAuthRequestInterceptor;
+import feign.gson.GsonDecoder;
+import feign.gson.GsonEncoder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.config.java.AbstractCloudConfig;
@@ -53,9 +56,24 @@ public class Config extends AbstractCloudConfig {
     }
 
     @Bean
+    public EceRepo eceRepo() {
+        return Feign
+                .builder().requestInterceptor(basicAuthRequestInterceptor())
+                .encoder(new GsonEncoder())
+                .decoder(new GsonDecoder())
+                .target(EceRepo.class, "https://" + eceHost + ":" + ecePort + "/api/v1/");
+    }
+
+    @Bean
     public EceConfig eceConfig() {
         return new EceConfig(elasticsearchDomain, elasticsearchPort);
     }
+
+    @Value("${ECE_HOST}")
+    private String eceHost;
+
+    @Value("${ECE_PORT}")
+    private String ecePort;
 
     @Value("${ECE_ADMIN_UID}")
     private String uid;

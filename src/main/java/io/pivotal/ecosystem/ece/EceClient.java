@@ -21,66 +21,63 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
 class EceClient {
 
     private EceRepo eceRepo;
-
     private EceConfig eceConfig;
+    private EnumUtil enumUtil;
 
-    public EceClient(EceConfig eceConfig, EceRepo eceRepo) {
+    public EceClient(EceConfig eceConfig, EnumUtil enumUtil, EceRepo eceRepo) {
         super();
         this.eceConfig = eceConfig;
         this.eceRepo = eceRepo;
+        this.enumUtil = enumUtil;
     }
 
     void createCluster(ServiceInstance instance, boolean kibana) {
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters(), kibana);
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
         log.info("creating cluster: " + cc.getClusterName());
 
         Object resp = eceRepo.createCluster(cc.getCreateClusterBody());
-        cc.loadCredentials(resp);
-        instance.getParameters().putAll(cc.credsToParams());
+        cc.processCreateResponse(resp);
+        enumUtil.enumsToParams(cc, instance);
+
+        if (kibana) {
+            KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
+            enumUtil.enumsToParams(kc, instance);
+        }
     }
 
     void shutdownCluster(ServiceInstance instance) {
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters());
-        log.info("stopping cluster: " + cc.getClusterName());
-
-        eceRepo.shutdownCluster(cc.getClusterId());
+        log.info("stopping cluster: " + ClusterConfig.getClusterId(instance));
+        eceRepo.shutdownCluster(ClusterConfig.getClusterId(instance));
     }
 
     void deleteCluster(ServiceInstance instance) {
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters());
-        log.info("deleting cluster: " + cc.getClusterName());
+        log.info("deleting cluster: " + ClusterConfig.getClusterId(instance));
 
-        eceRepo.deleteCluster(cc.getClusterId());
-    }
-
-    Map<String, Object> getClusterCredentials(ServiceInstance instance) {
-        return new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters()).credsToParams();
+        eceRepo.deleteCluster(ClusterConfig.getClusterId(instance));
     }
 
     void bindToCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters());
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
         log.info("binding app: " + binding.getApp_guid() + " to cluster: " + cc.getClusterName());
     }
 
     void unbindFromCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters());
+        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
         log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + cc.getClusterName());
     }
 
     private void createKibana(ServiceInstance instance) {
-        KibanaConfig kc = new KibanaConfig(new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters()), instance.getParameters());
-        log.info("creating kibana cluster: " + kc.getConfig().get(KibanaConfig.kibanaApiKeys.kibana_cluster_id));
+        KibanaConfig kc = new KibanaConfig(new ClusterConfig(eceConfig, instance, enumUtil), instance, enumUtil);
+        log.info("creating kibana cluster: " + kc.getConfig().get(KibanaConfig.kibanaApiKeys.cluster_name));
 
         Object resp = eceRepo.createKibana(kc.getCreateClusterBody());
         instance.getParameters().putAll(kc.extractCredentials(resp));
@@ -92,7 +89,7 @@ class EceClient {
 
     boolean clusterExists(ServiceInstance instance) {
         List<String> l = JsonPath.parse(eceRepo.getClustersInfo()).read("$..cluster_name");
-        return l.contains(new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters()).getClusterName());
+        return l.contains(new ClusterConfig(eceConfig, instance, enumUtil).getClusterName());
     }
 
     boolean isClusterStarted(ServiceInstance instance) {
@@ -104,19 +101,19 @@ class EceClient {
     }
 
     private boolean isClusterInState(ServiceInstance instance, ClusterConfig.clusterState state) {
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance.getService_instance_id(), instance.getParameters());
-        String status = getClusterStatus(eceRepo.getClusterInfo(cc.getClusterId()));
+        log.info("checking status on clusterId: " + ClusterConfig.getClusterId(instance));
+        String status = getClusterStatus(eceRepo.getClusterInfo(ClusterConfig.getClusterId(instance)));
         return state.name().equalsIgnoreCase(status);
     }
 
     boolean isKibanaEnabled(ServiceInstance instance) {
         //do we even want kibana?
-        if (!ClusterConfig.includesKibana(instance.getParameters())) {
+        if (!KibanaConfig.includesKibana(instance)) {
             return false;
         }
 
         //if we have not yet started the enable process, do so now
-        if (!KibanaConfig.wasKibanaRequested(instance.getParameters())) {
+        if (!KibanaConfig.wasKibanaRequested(instance)) {
             createKibana(instance);
         }
 
@@ -125,7 +122,7 @@ class EceClient {
     }
 
     private boolean getKibanaEnabled(ServiceInstance instance) {
-        List<Boolean> l = JsonPath.parse(eceRepo.getClusterInfo(ClusterConfig.getClusterId(instance.getParameters()))).read("$..associated_kibana_clusters[*].enabled");
+        List<Boolean> l = JsonPath.parse(eceRepo.getClusterInfo(ClusterConfig.getClusterId(instance))).read("$..associated_kibana_clusters[*].enabled");
         for (Boolean b : l) {
             if (!b) {
                 return false;

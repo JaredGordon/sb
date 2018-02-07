@@ -52,13 +52,20 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
         }
 
         ServiceInstance instance = new ServiceInstance(request);
+        boolean exists;
+        try {
+            exists = eceClient.clusterExists(instance);
+        } catch (Throwable t) {
+            log.error("error checking cluster", t);
+            throw new ServiceBrokerException("Error checking cluster.", t);
+        }
 
-        if (eceClient.clusterExists(instance)) {
+        if (exists) {
             throw new ServiceInstanceExistsException(request.getServiceInstanceId(), request.getServiceDefinitionId());
         }
 
-        log.info("creating service instance: " + request.getServiceInstanceId() + " service definition: " + request.getServiceDefinitionId());
         try {
+            log.info("creating service instance: " + request.getServiceInstanceId() + " service definition: " + request.getServiceDefinitionId());
             eceClient.createCluster(instance, isKibana(instance));
 
             GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
@@ -77,7 +84,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
     }
 
     private boolean isKibana(ServiceInstance instance) {
-        return instance.getPlan_id().toLowerCase().contains(ClusterConfig.credentialKeys.enableKibana.name());
+        return instance.getPlan_id().toLowerCase().contains(KibanaConfig.KIBANA);
     }
 
     private ServiceInstance saveInstance(ServiceInstance instance) {
@@ -88,10 +95,64 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
 
     @Override
     public GetLastServiceOperationResponse getLastOperation(GetLastServiceOperationRequest getLastServiceOperationRequest) {
-        //todo implement this once we have a service to test against. should check on status, update instance, and return new last op.
-        GetLastServiceOperationResponse resp = new GetLastServiceOperationResponse();
-        resp.withOperationState(OperationState.SUCCEEDED);
-        return resp;
+        ServiceInstance instance = serviceInstanceRepository.findOne(getLastServiceOperationRequest.getServiceInstanceId());
+        if (instance == null) {
+            throw new ServiceInstanceDoesNotExistException(getLastServiceOperationRequest.getServiceInstanceId());
+        }
+
+        GetLastServiceOperationResponse lo = instance.getLastOperation();
+        if (!OperationState.IN_PROGRESS.equals(lo.getState())) {
+            return lo;
+        }
+
+        try {
+            if (lo.isDeleteOperation()) {
+                if (!eceClient.isClusterStopped(instance)) {
+                    log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " delete in progress, waiting for cluster to stop.");
+                    return lo;
+                }
+
+                log.info("deleting cluster: " + getLastServiceOperationRequest.getServiceInstanceId());
+                eceClient.deleteCluster(instance);
+                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
+                instance.getLastOperation().withDescription("deleted.");
+                saveInstance(instance);
+                return instance.getLastOperation();
+            }
+
+            // If cluster not started yet, we're still in process.
+            if (!eceClient.isClusterStarted(instance)) {
+                log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create in progress, waiting for cluster to start.");
+                return lo;
+            }
+
+            // So, cluster is started. If we don't want kibana, we are done.
+            if (!KibanaConfig.includesKibana(instance)) {
+                log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started.");
+                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
+                instance.getLastOperation().withDescription("created.");
+                saveInstance(instance);
+                return instance.getLastOperation();
+            }
+
+            // We must want kibana too, but if it is not ready we are still in process
+            if (!eceClient.isKibanaEnabled(instance)) {
+                log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " started, enabling kibana.");
+                return lo;
+            }
+
+            // Kibana is ready too, we are done.
+            log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started, kibana enabled");
+            instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
+            instance.getLastOperation().withDescription("created");
+            saveInstance(instance);
+            return instance.getLastOperation();
+        } catch (Throwable t) {
+            log.error("error updating last operation.", t);
+            instance.getLastOperation().withOperationState(OperationState.FAILED);
+            saveInstance(instance);
+            return instance.getLastOperation();
+        }
     }
 
     @Override
@@ -113,6 +174,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
             lo.withOperationState(OperationState.IN_PROGRESS);
             lo.withDescription("deleting....");
+            lo.withDeleteOperation(true);
             serviceInstance.setLastOperation(lo);
             saveInstance(serviceInstance);
 
@@ -148,7 +210,8 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
         try {
             eceClient.bindToCluster(instance, binding);
 
-            Map<String, Object> creds = eceClient.getClusterCredentials(instance);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> creds = (Map<String, Object>)instance.getParameters().get(ClusterConfig.CREDENTIALS);
             binding.getCredentials().putAll(creds);
 
             log.info("saving binding: " + request.getBindingId());

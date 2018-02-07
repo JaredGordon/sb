@@ -25,7 +25,6 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
 import java.util.EnumMap;
-import java.util.Map;
 
 import static io.pivotal.ecosystem.ece.ClusterConfig.credentialKeys;
 import static org.junit.Assert.*;
@@ -37,11 +36,14 @@ public class ClusterConfigTest {
     @Autowired
     private EceConfig eceConfig;
 
+    @Autowired
+    private EnumUtil enumUtil;
+
     @Test
     public void testWithInstanceAndDefaults() throws Exception {
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.getDefaultsParameters());
+        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
         assertNotNull(cc);
-        cc.loadCredentials(TestConfig.fromJson("createClusterResponse.json"));
+        cc.processCreateResponse(TestConfig.fromJson("createClusterResponse.json"));
         String id = cc.getCredentials().get(credentialKeys.clusterId);
         assertNotNull(id);
         assertFalse(TestConfig.SI_ID.equals(id));
@@ -50,7 +52,7 @@ public class ClusterConfigTest {
         assertEquals(ClusterConfig.DEFAULT_TOPOLOGY_TYPE, cc.getConfig().get(ClusterConfig.eceApiKeys.topology_type));
         assertEquals(ClusterConfig.DEFAULT_ZONES_COUNT, cc.getConfig().get(ClusterConfig.eceApiKeys.zone_count));
 
-        assertNotNull(cc.getCreateClusterBody().toString());
+        assertNotNull(cc.getCreateClusterBody());
     }
 
     @Test
@@ -58,18 +60,18 @@ public class ClusterConfigTest {
         String s1 = TestConfig.toJson(TestConfig.fromJson("createClusterRequestBody.json"));
         assertNotNull(s1);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.customServiceInstance());
-        String s2 = cc.getCreateClusterBody().toString();
+        ClusterConfig cc1 = new ClusterConfig(eceConfig, TestConfig.customServiceInstance(TestConfig.SI_ID), enumUtil);
+        String s2 = cc1.getCreateClusterBody();
         assertNotNull(s2);
         assertEquals(s1, s2);
 
-        s1 = TestConfig.toJson(TestConfig.fromJson("createClusterRequestBodyDefaults.json"));
-        assertNotNull(s1);
+        String s3 = TestConfig.toJson(TestConfig.fromJson("createClusterRequestBodyDefaults.json"));
+        assertNotNull(s3);
 
-        cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        s2 = cc.getCreateClusterBody().toString();
-        assertNotNull(s2);
-        assertEquals(s1, s2);
+        ClusterConfig cc2 = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
+        String s4 = cc2.getCreateClusterBody();
+        assertNotNull(s4);
+        assertEquals(s3, s4);
     }
 
     @Test
@@ -77,11 +79,11 @@ public class ClusterConfigTest {
         Object o = TestConfig.fromJson("createClusterResponse.json");
         assertNotNull(o);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.CLUSTER_ID, TestConfig.defaultsServiceInstance());
-        cc.loadCredentials(o);
+        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
+        cc.processCreateResponse(o);
         EnumMap<credentialKeys, String> m = cc.getCredentials();
         assertNotNull(m);
-        assertEquals("aClusterId", m.get(credentialKeys.clusterId));
+        assertEquals("d3228e4268d449e1be1a918e0eac49e3", m.get(credentialKeys.clusterId));
         assertEquals("aUser", m.get(credentialKeys.username));
         assertEquals("secret", m.get(credentialKeys.password));
     }

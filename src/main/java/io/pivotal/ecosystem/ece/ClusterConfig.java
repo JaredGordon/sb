@@ -25,8 +25,6 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.NonNull;
 
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
 
 public class ClusterConfig {
 
@@ -43,7 +41,6 @@ public class ClusterConfig {
         port,
         uri,
         eceEndpoint,
-        enableKibana,
         kibanaEndpoint,
         kibanaClusterId
     }
@@ -52,12 +49,14 @@ public class ClusterConfig {
     private final EnumMap<eceApiKeys, String> config = new EnumMap<>(eceApiKeys.class);
 
     public static final String ELASTIC_SEARCH = "elasticsearch";
+    public static final String CREDENTIALS = "credentials";
 
     static final String DEFAULT_ZONES_COUNT = "1";
     static final String DEFAULT_MEMORY_PER_NODE = "1024";
     static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
     static final String DEFAULT_TOPOLOGY_TYPE = "default";
     private static final String DEFAULT_ELASTICSEARCH_VERSION = "5.4.1";
+
 
     public enum eceApiKeys {
         cluster_name,
@@ -77,40 +76,24 @@ public class ClusterConfig {
     }
 
     private EceConfig eceConfig;
+    private EnumUtil enumUtil;
 
-    ClusterConfig(@NonNull EceConfig eceConfig, @NonNull String clusterId, @NonNull Map<String, Object> parameters) {
+    ClusterConfig(@NonNull EceConfig eceConfig, @NonNull ServiceInstance instance, @NonNull EnumUtil enumUtil) {
         super();
         this.eceConfig = eceConfig;
-        initConfig(clusterId, parameters);
+        this.enumUtil = enumUtil;
+        initConfig(instance);
     }
 
-    ClusterConfig(@NonNull EceConfig eceConfig, @NonNull String clusterId, @NonNull Map<String, Object> parameters, boolean kibana) {
-        this(eceConfig, clusterId, parameters);
-        parameters.put(credentialKeys.enableKibana.name(), kibana);
-    }
+    private void initConfig(ServiceInstance instance) {
+        config.putAll(enumUtil.paramsToConfig(instance));
 
-    private void initConfig(String clusterId, Map<String, Object> parameters) {
-
-        config.put(eceApiKeys.elasticsearch_cluster_id, clusterId);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> m = (Map<String, Object>) parameters.get(ELASTIC_SEARCH);
-
-        loadValueOrDefault(eceApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
-        loadValueOrDefault(eceApiKeys.elasticsearch_version, m, DEFAULT_ELASTICSEARCH_VERSION);
-        loadValueOrDefault(eceApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
-        loadValueOrDefault(eceApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
-        loadValueOrDefault(eceApiKeys.topology_type, m, DEFAULT_TOPOLOGY_TYPE);
-        loadValueOrDefault(eceApiKeys.cluster_name, m, clusterId);
-    }
-
-    public Map<String, Object> credsToParams() {
-        Map<String, Object> m = new HashMap<>();
-        for (credentialKeys key : credentialKeys.values()) {
-            m.put(key.name(), creds.get(key));
-        }
-
-        return m;
+        loadValueOrDefault(eceApiKeys.cluster_name, instance.getService_instance_id());
+        loadValueOrDefault(eceApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+        loadValueOrDefault(eceApiKeys.elasticsearch_version, DEFAULT_ELASTICSEARCH_VERSION);
+        loadValueOrDefault(eceApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
+        loadValueOrDefault(eceApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValueOrDefault(eceApiKeys.topology_type, DEFAULT_TOPOLOGY_TYPE);
     }
 
     String getClusterName() {
@@ -151,9 +134,11 @@ public class ClusterConfig {
         return config;
     }
 
-    void loadCredentials(Object createClusterResponse) {
+    void processCreateResponse(Object createClusterResponse) {
         DocumentContext dc = JsonPath.parse(createClusterResponse);
-        creds.put(credentialKeys.clusterId, dc.read("$." + eceApiKeys.elasticsearch_cluster_id.name()));
+        config.put(eceApiKeys.elasticsearch_cluster_id, dc.read("$." + eceApiKeys.elasticsearch_cluster_id.name()));
+
+        creds.put(credentialKeys.clusterId, config.get(eceApiKeys.elasticsearch_cluster_id));
         creds.put(credentialKeys.username, dc.read("$." + eceApiKeys.credentials.name() + "." + eceApiKeys.username.name()));
         creds.put(credentialKeys.password, dc.read("$." + eceApiKeys.credentials.name() + "." + eceApiKeys.password.name()));
 
@@ -164,23 +149,13 @@ public class ClusterConfig {
         creds.put(credentialKeys.kibanaEndpoint, "https://" + creds.get(credentialKeys.kibanaClusterId) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
     }
 
-    static String getClusterId(Map<String, Object> parameters) {
-        return parameters.containsKey(credentialKeys.clusterId.name()) ? parameters.get(credentialKeys.clusterId.name()).toString() : null;
+    static String getClusterId(ServiceInstance instance) {
+        return instance.getParameters().containsKey(credentialKeys.clusterId.name()) ? instance.getParameters().get(credentialKeys.clusterId.name()).toString() : null;
     }
 
-    static boolean includesKibana(Map<String, Object> parameters) {
-        Object o = parameters.get(credentialKeys.enableKibana.name());
-        if (o == null) {
-            return false;
-        }
-        return Boolean.valueOf(o.toString());
-    }
-
-    private void loadValueOrDefault(eceApiKeys key, Map<String, Object> parameters, String defaultValue) {
-        if (parameters == null || !parameters.containsKey(key.name())) {
+    private void loadValueOrDefault(eceApiKeys key, String defaultValue) {
+        if (!config.containsKey(key)) {
             config.put(key, defaultValue);
-        } else {
-            config.put(key, parameters.get(key.name()).toString());
         }
     }
 }

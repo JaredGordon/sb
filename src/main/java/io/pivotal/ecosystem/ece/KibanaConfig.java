@@ -29,7 +29,7 @@ import java.util.Map;
 
 class KibanaConfig {
 
-    private static final String KIBANA = "kibana";
+    public static final String KIBANA = "kibana";
 
     private static final String DEFAULT_ZONES_COUNT = "1";
     private static final String DEFAULT_MEMORY_PER_NODE = "1024";
@@ -52,25 +52,25 @@ class KibanaConfig {
     }
 
     private ClusterConfig clusterConfig;
+    private EnumUtil enumUtil;
 
-    KibanaConfig(@NonNull ClusterConfig clusterConfig, @NonNull Map<String, Object> parameters) {
+    KibanaConfig(@NonNull ClusterConfig clusterConfig, @NonNull ServiceInstance instance, @NonNull EnumUtil enumUtil) {
         super();
         this.clusterConfig = clusterConfig;
-        initConfig(parameters);
+        this.enumUtil = enumUtil;
+        initConfig(instance);
     }
 
-    private void initConfig(Map<String, Object> parameters) {
+    private void initConfig(ServiceInstance instance) {
+        config.putAll(enumUtil.paramsToKibanaConfig(instance));
         config.put(kibanaApiKeys.elasticsearch_cluster_id, clusterConfig.getClusterId());
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> m = (Map<String, Object>) parameters.get(KIBANA);
-
-        loadValueOrDefault(kibanaApiKeys.cluster_name, m, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
-        loadValueOrDefault(kibanaApiKeys.zone_count, m, DEFAULT_ZONES_COUNT);
-        loadValueOrDefault(kibanaApiKeys.version, m, DEFAULT_KIBANA_VERSION);
-        loadValueOrDefault(kibanaApiKeys.memory_per_node, m, DEFAULT_MEMORY_PER_NODE);
-        loadValueOrDefault(kibanaApiKeys.node_count_per_zone, m, DEFAULT_NODE_COUNT_PER_ZONE);
-        loadValueOrDefault(kibanaApiKeys.cluster_topology, m, DEFAULT_TOPOLOGY_TYPE);
+        loadValueOrDefault(kibanaApiKeys.cluster_name, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
+        loadValueOrDefault(kibanaApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+        loadValueOrDefault(kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
+        loadValueOrDefault(kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
+        loadValueOrDefault(kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValueOrDefault(kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
     }
 
     public EnumMap<kibanaApiKeys, String> getConfig() {
@@ -107,15 +107,22 @@ class KibanaConfig {
         return m;
     }
 
-    static boolean wasKibanaRequested(Map<String, Object> parameters) {
-        return parameters.containsKey(ClusterConfig.credentialKeys.kibanaClusterId.name());
+    @SuppressWarnings("unchecked")
+    static boolean wasKibanaRequested(ServiceInstance instance) {
+        if (!instance.getParameters().containsKey(KIBANA)) {
+            return false;
+        }
+
+        return ((Map<String, Object>) instance.getParameters().get(KIBANA)).containsKey(ClusterConfig.credentialKeys.kibanaClusterId.name());
     }
 
-    private void loadValueOrDefault(kibanaApiKeys key, Map<String, Object> parameters, String defaultValue) {
-        if (parameters == null || !parameters.containsKey(key.name())) {
+    static boolean includesKibana(ServiceInstance instance) {
+        return instance.getParameters().containsKey(KIBANA);
+    }
+
+    private void loadValueOrDefault(kibanaApiKeys key, String defaultValue) {
+        if (!config.containsKey(key)) {
             config.put(key, defaultValue);
-        } else {
-            config.put(key, parameters.get(key.name()).toString());
         }
     }
 }
