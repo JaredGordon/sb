@@ -23,6 +23,7 @@ import com.google.gson.JsonObject;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import lombok.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.EnumMap;
 
@@ -51,7 +52,7 @@ public class ClusterConfig {
     public static final String ELASTIC_SEARCH = "elasticsearch";
     public static final String CREDENTIALS = "credentials";
 
-    static final String DEFAULT_ZONES_COUNT = "1";
+    static final String DEFAULT_ZONE_COUNT = "1";
     static final String DEFAULT_MEMORY_PER_NODE = "1024";
     static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
     static final String DEFAULT_TOPOLOGY_TYPE = "default";
@@ -75,13 +76,13 @@ public class ClusterConfig {
         password
     }
 
-    private EceConfig eceConfig;
-    private EnumUtil enumUtil;
+    private final EnumUtil enumUtil = new EnumUtil();
 
-    ClusterConfig(@NonNull EceConfig eceConfig, @NonNull ServiceInstance instance, @NonNull EnumUtil enumUtil) {
+    private EceConfig eceConfig;
+
+    ClusterConfig(@NonNull ServiceInstance instance, @NonNull EceConfig eceConfig) {
         super();
         this.eceConfig = eceConfig;
-        this.enumUtil = enumUtil;
         initConfig(instance);
     }
 
@@ -89,7 +90,7 @@ public class ClusterConfig {
         config.putAll(enumUtil.paramsToConfig(instance));
 
         loadValueOrDefault(eceApiKeys.cluster_name, instance.getService_instance_id());
-        loadValueOrDefault(eceApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+        loadValueOrDefault(eceApiKeys.zone_count, DEFAULT_ZONE_COUNT);
         loadValueOrDefault(eceApiKeys.elasticsearch_version, DEFAULT_ELASTICSEARCH_VERSION);
         loadValueOrDefault(eceApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
         loadValueOrDefault(eceApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
@@ -126,14 +127,6 @@ public class ClusterConfig {
         return new GsonBuilder().create().toJson(cluster);
     }
 
-    EnumMap<credentialKeys, String> getCredentials() {
-        return creds;
-    }
-
-    EnumMap<eceApiKeys, String> getConfig() {
-        return config;
-    }
-
     void processCreateResponse(Object createClusterResponse) {
         DocumentContext dc = JsonPath.parse(createClusterResponse);
         config.put(eceApiKeys.elasticsearch_cluster_id, dc.read("$." + eceApiKeys.elasticsearch_cluster_id.name()));
@@ -149,13 +142,14 @@ public class ClusterConfig {
         creds.put(credentialKeys.kibanaEndpoint, "https://" + creds.get(credentialKeys.kibanaClusterId) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
     }
 
-    static String getClusterId(ServiceInstance instance) {
-        return instance.getParameters().containsKey(credentialKeys.clusterId.name()) ? instance.getParameters().get(credentialKeys.clusterId.name()).toString() : null;
-    }
-
     private void loadValueOrDefault(eceApiKeys key, String defaultValue) {
         if (!config.containsKey(key)) {
             config.put(key, defaultValue);
         }
+    }
+
+    public void configToParams(ServiceInstance instance) {
+        enumUtil.enumsToParams(config, ClusterConfig.ELASTIC_SEARCH, instance);
+        enumUtil.enumsToParams(creds, ClusterConfig.CREDENTIALS, instance);
     }
 }

@@ -38,19 +38,29 @@ public class KibanaConfigTest {
     @Autowired
     private EceConfig eceConfig;
 
-    @Autowired
-    private EnumUtil enumUtil;
-
     @Test
     public void testWithInstanceAndDefaults() {
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
-        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
+        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
+        KibanaConfig kc = new KibanaConfig(instance, eceConfig);
+        cc.configToParams(instance);
+        kc.configToParams(instance);
 
-        assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node), kc.getConfig().get(KibanaConfig.kibanaApiKeys.memory_per_node));
-        assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id), kc.getConfig().get(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id));
-        assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.node_count_per_zone), kc.getConfig().get(KibanaConfig.kibanaApiKeys.node_count_per_zone));
-        assertEquals(cc.getConfig().get(ClusterConfig.eceApiKeys.zone_count), kc.getConfig().get(KibanaConfig.kibanaApiKeys.zone_count));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ece = (Map<String, Object>) instance.getParameters().get(ClusterConfig.ELASTIC_SEARCH);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kibana = (Map<String, Object>) instance.getParameters().get(KibanaConfig.KIBANA);
+
+        assertEquals(ece.get(ClusterConfig.eceApiKeys.memory_per_node.name()), ClusterConfig.DEFAULT_MEMORY_PER_NODE);
+        assertEquals(ece.get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()), TestConfig.CLUSTER_ID);
+        assertEquals(ece.get(ClusterConfig.eceApiKeys.node_count_per_zone.name()), ClusterConfig.DEFAULT_NODE_COUNT_PER_ZONE);
+        assertEquals(ece.get(ClusterConfig.eceApiKeys.zone_count.name()), ClusterConfig.DEFAULT_ZONE_COUNT);
+
+        assertEquals(kibana.get(KibanaConfig.kibanaApiKeys.memory_per_node.name()), KibanaConfig.DEFAULT_MEMORY_PER_NODE);
+        assertEquals(kibana.get(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id.name()), TestConfig.CLUSTER_ID);
+        assertEquals(kibana.get(KibanaConfig.kibanaApiKeys.node_count_per_zone.name()), KibanaConfig.DEFAULT_NODE_COUNT_PER_ZONE);
+        assertEquals(kibana.get(KibanaConfig.kibanaApiKeys.zone_count.name()), KibanaConfig.DEFAULT_ZONE_COUNT);
 
         assertNotNull(cc.getCreateClusterBody());
     }
@@ -61,10 +71,12 @@ public class KibanaConfigTest {
         assertNotNull(s1);
 
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
+        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
+        cc.configToParams(instance);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
-        cc.getConfig().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id, TestConfig.CLUSTER_ID);
-        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
+        KibanaConfig kc = new KibanaConfig(instance, eceConfig);
+        kc.configToParams(instance);
+
         String s2 = kc.getCreateClusterBody();
         assertNotNull(s2);
         assertEquals(s1, s2);
@@ -77,8 +89,8 @@ public class KibanaConfigTest {
 
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
 
-        ClusterConfig cc = new ClusterConfig(eceConfig, instance, enumUtil);
-        KibanaConfig kc = new KibanaConfig(cc, instance, enumUtil);
+        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
+        KibanaConfig kc = new KibanaConfig(instance, eceConfig);
 
         Map<String, Object> m2 = kc.extractCredentials(o);
         assertNotNull(m2);

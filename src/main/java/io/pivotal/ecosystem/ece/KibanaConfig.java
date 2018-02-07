@@ -31,11 +31,11 @@ class KibanaConfig {
 
     public static final String KIBANA = "kibana";
 
-    private static final String DEFAULT_ZONES_COUNT = "1";
-    private static final String DEFAULT_MEMORY_PER_NODE = "1024";
-    private static final String DEFAULT_KIBANA_VERSION = "5.3.0";
-    private static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
-    private static final String DEFAULT_TOPOLOGY_TYPE = "default";
+    public static final String DEFAULT_ZONE_COUNT = "1";
+    public static final String DEFAULT_MEMORY_PER_NODE = "1024";
+    public static final String DEFAULT_KIBANA_VERSION = "5.3.0";
+    public static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
+    public static final String DEFAULT_TOPOLOGY_TYPE = "default";
 
     private final EnumMap<kibanaApiKeys, String> config = new EnumMap<>(KibanaConfig.kibanaApiKeys.class);
 
@@ -51,30 +51,32 @@ class KibanaConfig {
         plan
     }
 
-    private ClusterConfig clusterConfig;
-    private EnumUtil enumUtil;
+    private final EnumUtil enumUtil = new EnumUtil();
 
-    KibanaConfig(@NonNull ClusterConfig clusterConfig, @NonNull ServiceInstance instance, @NonNull EnumUtil enumUtil) {
+    private EceConfig eceConfig;
+
+    KibanaConfig(@NonNull ServiceInstance instance, EceConfig eceConfig) {
         super();
-        this.clusterConfig = clusterConfig;
-        this.enumUtil = enumUtil;
+        this.eceConfig = eceConfig;
         initConfig(instance);
     }
 
     private void initConfig(ServiceInstance instance) {
         config.putAll(enumUtil.paramsToKibanaConfig(instance));
-        config.put(kibanaApiKeys.elasticsearch_cluster_id, clusterConfig.getClusterId());
 
-        loadValueOrDefault(kibanaApiKeys.cluster_name, clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.cluster_name));
-        loadValueOrDefault(kibanaApiKeys.zone_count, DEFAULT_ZONES_COUNT);
+        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
+        config.put(kibanaApiKeys.elasticsearch_cluster_id, cc.getClusterId());
+
+        loadValueOrDefault(kibanaApiKeys.cluster_name, cc.getClusterName());
+        loadValueOrDefault(kibanaApiKeys.zone_count, DEFAULT_ZONE_COUNT);
         loadValueOrDefault(kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
         loadValueOrDefault(kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
         loadValueOrDefault(kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
         loadValueOrDefault(kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
     }
 
-    public EnumMap<kibanaApiKeys, String> getConfig() {
-        return config;
+    public String getClusterName() {
+        return config.get(kibanaApiKeys.cluster_name);
     }
 
     String getCreateClusterBody() {
@@ -86,10 +88,10 @@ class KibanaConfig {
 
         cluster.addProperty(kibanaApiKeys.cluster_name.name(), config.get(kibanaApiKeys.cluster_name));
         cluster.addProperty(kibanaApiKeys.elasticsearch_cluster_id.name(), config.get(kibanaApiKeys.elasticsearch_cluster_id));
-        plan.addProperty(kibanaApiKeys.zone_count.name(), Integer.valueOf(clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.zone_count)));
+        plan.addProperty(kibanaApiKeys.zone_count.name(), Integer.valueOf(config.get(kibanaApiKeys.zone_count)));
 
-        topology.addProperty(kibanaApiKeys.memory_per_node.name(), Integer.valueOf(clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node)));
-        topology.addProperty(kibanaApiKeys.node_count_per_zone.name(), Integer.valueOf(clusterConfig.getConfig().get(ClusterConfig.eceApiKeys.node_count_per_zone)));
+        topology.addProperty(kibanaApiKeys.memory_per_node.name(), Integer.valueOf(config.get(kibanaApiKeys.memory_per_node)));
+        topology.addProperty(kibanaApiKeys.node_count_per_zone.name(), Integer.valueOf(config.get(kibanaApiKeys.node_count_per_zone)));
         clusterTopology.add(topology);
         plan.add(kibanaApiKeys.cluster_topology.name(), clusterTopology);
         kibana.addProperty(kibanaApiKeys.version.name(), DEFAULT_KIBANA_VERSION);
@@ -124,5 +126,9 @@ class KibanaConfig {
         if (!config.containsKey(key)) {
             config.put(key, defaultValue);
         }
+    }
+
+    public void configToParams(ServiceInstance instance) {
+        enumUtil.enumsToParams(config, KibanaConfig.KIBANA, instance);
     }
 }

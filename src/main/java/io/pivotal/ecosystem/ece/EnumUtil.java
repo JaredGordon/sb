@@ -46,15 +46,6 @@ class EnumUtil {
         return e;
     }
 
-    void enumsToParams(ClusterConfig config, ServiceInstance instance) {
-        enumsToParams(config.getConfig(), ClusterConfig.ELASTIC_SEARCH, instance);
-        enumsToParams(config.getCredentials(), ClusterConfig.CREDENTIALS, instance);
-    }
-
-    void enumsToParams(KibanaConfig config, ServiceInstance instance) {
-        enumsToParams(config.getConfig(), KibanaConfig.KIBANA, instance);
-    }
-
     void enumsToParams(EnumMap<?, String> config, String key, ServiceInstance instance) {
         if (!instance.getParameters().containsKey(key)) {
             instance.getParameters().put(key, new HashMap<String, Object>());

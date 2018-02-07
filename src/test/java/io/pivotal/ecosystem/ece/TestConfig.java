@@ -84,7 +84,12 @@ class TestConfig {
     }
 
     static Map<String, Object> getDefaultsParameters() {
-        return new HashMap<>();
+        Map<String, Object> config = new HashMap<>();
+        config.put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), TestConfig.CLUSTER_ID);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put(ClusterConfig.ELASTIC_SEARCH, config);
+        return params;
     }
 
     static String toJson(Object o) throws JsonProcessingException {

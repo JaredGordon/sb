@@ -24,10 +24,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
-import java.util.EnumMap;
+import java.util.Map;
 
 import static io.pivotal.ecosystem.ece.ClusterConfig.credentialKeys;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = TestConfig.class)
@@ -36,21 +37,19 @@ public class ClusterConfigTest {
     @Autowired
     private EceConfig eceConfig;
 
-    @Autowired
-    private EnumUtil enumUtil;
-
     @Test
     public void testWithInstanceAndDefaults() throws Exception {
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
-        assertNotNull(cc);
+        ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
+        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
         cc.processCreateResponse(TestConfig.fromJson("createClusterResponse.json"));
-        String id = cc.getCredentials().get(credentialKeys.clusterId);
-        assertNotNull(id);
-        assertFalse(TestConfig.SI_ID.equals(id));
-        assertEquals(ClusterConfig.DEFAULT_MEMORY_PER_NODE, cc.getConfig().get(ClusterConfig.eceApiKeys.memory_per_node));
-        assertEquals(ClusterConfig.DEFAULT_NODE_COUNT_PER_ZONE, cc.getConfig().get(ClusterConfig.eceApiKeys.node_count_per_zone));
-        assertEquals(ClusterConfig.DEFAULT_TOPOLOGY_TYPE, cc.getConfig().get(ClusterConfig.eceApiKeys.topology_type));
-        assertEquals(ClusterConfig.DEFAULT_ZONES_COUNT, cc.getConfig().get(ClusterConfig.eceApiKeys.zone_count));
+        cc.configToParams(instance);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> creds = (Map<String, Object>) instance.getParameters().get(ClusterConfig.CREDENTIALS);
+
+        assertEquals("d3228e4268d449e1be1a918e0eac49e3", creds.get(credentialKeys.clusterId.name()));
+        assertEquals("aUser", creds.get(credentialKeys.username.name()));
+        assertEquals("secret", creds.get(credentialKeys.password.name()));
 
         assertNotNull(cc.getCreateClusterBody());
     }
@@ -60,7 +59,7 @@ public class ClusterConfigTest {
         String s1 = TestConfig.toJson(TestConfig.fromJson("createClusterRequestBody.json"));
         assertNotNull(s1);
 
-        ClusterConfig cc1 = new ClusterConfig(eceConfig, TestConfig.customServiceInstance(TestConfig.SI_ID), enumUtil);
+        ClusterConfig cc1 = new ClusterConfig(TestConfig.customServiceInstance(TestConfig.SI_ID), eceConfig);
         String s2 = cc1.getCreateClusterBody();
         assertNotNull(s2);
         assertEquals(s1, s2);
@@ -68,23 +67,9 @@ public class ClusterConfigTest {
         String s3 = TestConfig.toJson(TestConfig.fromJson("createClusterRequestBodyDefaults.json"));
         assertNotNull(s3);
 
-        ClusterConfig cc2 = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
+        ClusterConfig cc2 = new ClusterConfig(TestConfig.defaultsServiceInstance(TestConfig.SI_ID), eceConfig);
         String s4 = cc2.getCreateClusterBody();
         assertNotNull(s4);
         assertEquals(s3, s4);
-    }
-
-    @Test
-    public void testExtractCreds() throws IOException {
-        Object o = TestConfig.fromJson("createClusterResponse.json");
-        assertNotNull(o);
-
-        ClusterConfig cc = new ClusterConfig(eceConfig, TestConfig.defaultsServiceInstance(TestConfig.SI_ID), enumUtil);
-        cc.processCreateResponse(o);
-        EnumMap<credentialKeys, String> m = cc.getCredentials();
-        assertNotNull(m);
-        assertEquals("d3228e4268d449e1be1a918e0eac49e3", m.get(credentialKeys.clusterId));
-        assertEquals("aUser", m.get(credentialKeys.username));
-        assertEquals("secret", m.get(credentialKeys.password));
     }
 }
