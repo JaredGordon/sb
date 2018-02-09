@@ -1,10 +1,7 @@
 package io.pivotal.ecosystem.ece;
 
-import org.springframework.stereotype.Component;
-
 import java.util.*;
 
-@Component
 class EnumUtil {
 
     private static final List<String> configKeys = EnumUtil.getEnumNames(ClusterConfig.eceApiKeys.class);
@@ -14,47 +11,44 @@ class EnumUtil {
         return Arrays.asList(Arrays.toString(e.getEnumConstants()).replaceAll("^.|.$", "").split(", "));
     }
 
-    EnumMap<ClusterConfig.eceApiKeys, String> paramsToConfig(ServiceInstance instance) {
-        EnumMap<ClusterConfig.eceApiKeys, String> e = new EnumMap<>(ClusterConfig.eceApiKeys.class);
+    Map<String, String> paramsToKibanaParams(Map<String, Object> params) {
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) instance.getParameters().get(ClusterConfig.ELASTIC_SEARCH);
-
-        if (parameters != null) {
-            for (String key : parameters.keySet()) {
-                if (configKeys.contains(key)) {
-                    e.put(ClusterConfig.eceApiKeys.valueOf(key), parameters.get(key).toString());
-                }
-            }
-        }
-        return e;
-    }
-
-    EnumMap<KibanaConfig.kibanaApiKeys, String> paramsToKibanaConfig(ServiceInstance instance) {
+        Map<String, Object> kibanaConfigParams = (Map<String, Object>) params.get(KibanaConfig.KIBANA);
         EnumMap<KibanaConfig.kibanaApiKeys, String> e = new EnumMap<>(KibanaConfig.kibanaApiKeys.class);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> parameters = (Map<String, Object>) instance.getParameters().get(KibanaConfig.KIBANA);
-
-        if (parameters != null) {
-            for (String key : parameters.keySet()) {
+        if (kibanaConfigParams != null) {
+            for (String key : kibanaConfigParams.keySet()) {
                 if (kibanaKeys.contains(key)) {
-                    e.put(KibanaConfig.kibanaApiKeys.valueOf(key), parameters.get(key).toString());
+                    e.put(KibanaConfig.kibanaApiKeys.valueOf(key), kibanaConfigParams.get(key).toString());
                 }
             }
         }
-        return e;
+        return enumsToParams(e);
     }
 
-    void enumsToParams(EnumMap<?, String> config, String key, ServiceInstance instance) {
-        if (!instance.getParameters().containsKey(key)) {
-            instance.getParameters().put(key, new HashMap<String, Object>());
-        }
+    Map<String, String> paramsToClusterConfigParams(Map<String, Object> params) {
 
         @SuppressWarnings("unchecked")
-        Map<String, Object> m = (Map<String, Object>) instance.getParameters().get(key);
-        for (Enum<?> e : config.keySet()) {
-            m.put(e.name(), config.get(e));
+        Map<String, Object> clusterConfigParams = (Map<String, Object>) params.get(ClusterConfig.ELASTIC_SEARCH);
+        EnumMap<ClusterConfig.eceApiKeys, String> e = new EnumMap<>(ClusterConfig.eceApiKeys.class);
+
+        if (clusterConfigParams != null) {
+            for (String key : clusterConfigParams.keySet()) {
+                if (configKeys.contains(key)) {
+                    e.put(ClusterConfig.eceApiKeys.valueOf(key), clusterConfigParams.get(key).toString());
+                }
+            }
         }
+        return enumsToParams(e);
+    }
+
+    private Map<String, String> enumsToParams(EnumMap<?, String> enumMap) {
+        Map<String, String> m = new HashMap<>();
+        for (Enum<?> e : enumMap.keySet()) {
+            m.put(e.name(), enumMap.get(e));
+        }
+
+        return m;
     }
 }

@@ -41,22 +41,20 @@ import static org.junit.Assert.assertNotNull;
 @Ignore
 public class EceBrokerTest {
 
-    private static final String ID = "deleteme";
-
     @Autowired
     private EceBroker eceBroker;
 
     @Test
-    public void testNoKibanaCluster() throws InterruptedException {
-        testLifeCycle("oneNodeCluster");
+    public void testNoKibanaCluster() {
+        testLifeCycle();
     }
 
     @Test
-    public void testKibanaCluster() throws InterruptedException {
-        testLifeCycle("oneNodeClusterWithKibana");
+    public void testKibanaCluster() {
+        testLifeCycle();
     }
 
-    private void testLifeCycle(String planId) throws InterruptedException {
+    private void testLifeCycle() {
         CreateServiceInstanceRequest creq = new CreateServiceInstanceRequest().withAsyncAccepted(true).withServiceInstanceId(TestConfig.SI_ID);
         assertNotNull(eceBroker.createServiceInstance(creq));
 

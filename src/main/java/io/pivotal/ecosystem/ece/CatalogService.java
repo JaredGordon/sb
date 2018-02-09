@@ -64,14 +64,11 @@ public class CatalogService implements org.springframework.cloud.servicebroker.s
         return null;
     }
 
-    private static String getContents(String fileName) throws IOException {
-        URI u = new ClassPathResource(fileName).getURI();
-        return new String(Files.readAllBytes(Paths.get(u)));
-    }
-
     private Catalog loadCatalog() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        catalog = mapper.readValue(getContents("catalog.json"), Catalog.class);
+        URI u = new ClassPathResource("catalog.json").getURI();
+        String s = new String(Files.readAllBytes(Paths.get(u)));
+        catalog = mapper.readValue(s, Catalog.class);
         return catalog;
     }
 }

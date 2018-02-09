@@ -21,12 +21,11 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.jayway.jsonpath.JsonPath;
-import lombok.NonNull;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-
+@Data
+@NoArgsConstructor
 class KibanaConfig {
 
     public static final String KIBANA = "kibana";
@@ -36,8 +35,7 @@ class KibanaConfig {
     public static final String DEFAULT_KIBANA_VERSION = "5.3.0";
     public static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
     public static final String DEFAULT_TOPOLOGY_TYPE = "default";
-
-    private final EnumMap<kibanaApiKeys, String> config = new EnumMap<>(KibanaConfig.kibanaApiKeys.class);
+    public static final String REQUESTED = "requested";
 
     public enum kibanaApiKeys {
         cluster_name,
@@ -51,47 +49,30 @@ class KibanaConfig {
         plan
     }
 
-    private final EnumUtil enumUtil = new EnumUtil();
+    public void processParams(ServiceInstance instance) {
+        instance.getKibanaParams().put(kibanaApiKeys.elasticsearch_cluster_id.name(), instance.getClusterId());
 
-    private EceConfig eceConfig;
-
-    KibanaConfig(@NonNull ServiceInstance instance, EceConfig eceConfig) {
-        super();
-        this.eceConfig = eceConfig;
-        initConfig(instance);
+        loadValueOrDefault(instance, kibanaApiKeys.cluster_name, instance.getClusterName());
+        loadValueOrDefault(instance, kibanaApiKeys.zone_count, DEFAULT_ZONE_COUNT);
+        loadValueOrDefault(instance, kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
+        loadValueOrDefault(instance, kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
+        loadValueOrDefault(instance, kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
+        loadValueOrDefault(instance, kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
     }
 
-    private void initConfig(ServiceInstance instance) {
-        config.putAll(enumUtil.paramsToKibanaConfig(instance));
-
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        config.put(kibanaApiKeys.elasticsearch_cluster_id, cc.getClusterId());
-
-        loadValueOrDefault(kibanaApiKeys.cluster_name, cc.getClusterName());
-        loadValueOrDefault(kibanaApiKeys.zone_count, DEFAULT_ZONE_COUNT);
-        loadValueOrDefault(kibanaApiKeys.version, DEFAULT_KIBANA_VERSION);
-        loadValueOrDefault(kibanaApiKeys.memory_per_node, DEFAULT_MEMORY_PER_NODE);
-        loadValueOrDefault(kibanaApiKeys.node_count_per_zone, DEFAULT_NODE_COUNT_PER_ZONE);
-        loadValueOrDefault(kibanaApiKeys.cluster_topology, DEFAULT_TOPOLOGY_TYPE);
-    }
-
-    public String getClusterName() {
-        return config.get(kibanaApiKeys.cluster_name);
-    }
-
-    String getCreateClusterBody() {
+    String getCreateClusterBody(ServiceInstance instance) {
         JsonObject cluster = new JsonObject();
         JsonObject plan = new JsonObject();
         JsonObject kibana = new JsonObject();
         JsonArray clusterTopology = new JsonArray();
         JsonObject topology = new JsonObject();
 
-        cluster.addProperty(kibanaApiKeys.cluster_name.name(), config.get(kibanaApiKeys.cluster_name));
-        cluster.addProperty(kibanaApiKeys.elasticsearch_cluster_id.name(), config.get(kibanaApiKeys.elasticsearch_cluster_id));
-        plan.addProperty(kibanaApiKeys.zone_count.name(), Integer.valueOf(config.get(kibanaApiKeys.zone_count)));
+        cluster.addProperty(kibanaApiKeys.cluster_name.name(), instance.getKibanaParams().get(kibanaApiKeys.cluster_name.name()));
+        cluster.addProperty(kibanaApiKeys.elasticsearch_cluster_id.name(), instance.getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()));
+        plan.addProperty(kibanaApiKeys.zone_count.name(), Integer.valueOf(instance.getKibanaParams().get(kibanaApiKeys.zone_count.name())));
 
-        topology.addProperty(kibanaApiKeys.memory_per_node.name(), Integer.valueOf(config.get(kibanaApiKeys.memory_per_node)));
-        topology.addProperty(kibanaApiKeys.node_count_per_zone.name(), Integer.valueOf(config.get(kibanaApiKeys.node_count_per_zone)));
+        topology.addProperty(kibanaApiKeys.memory_per_node.name(), Integer.valueOf(instance.getKibanaParams().get(kibanaApiKeys.memory_per_node.name())));
+        topology.addProperty(kibanaApiKeys.node_count_per_zone.name(), Integer.valueOf(instance.getKibanaParams().get(kibanaApiKeys.node_count_per_zone.name())));
         clusterTopology.add(topology);
         plan.add(kibanaApiKeys.cluster_topology.name(), clusterTopology);
         kibana.addProperty(kibanaApiKeys.version.name(), DEFAULT_KIBANA_VERSION);
@@ -102,33 +83,16 @@ class KibanaConfig {
         return new GsonBuilder().create().toJson(cluster);
     }
 
-    Map<String, Object> extractCredentials(Object createClusterResponse) {
-        Map<String, Object> m = new HashMap<>();
-        m.put(ClusterConfig.credentialKeys.kibanaClusterId.name(), JsonPath.parse(createClusterResponse).read("$." + kibanaApiKeys.kibana_cluster_id.name()));
-
-        return m;
+    void processCreateResponse(Object createClusterResponse, ServiceInstance instance, EceConfig eceConfig) {
+        String kibanaClusterId = JsonPath.parse(createClusterResponse).read("$." + kibanaApiKeys.kibana_cluster_id.name());
+        instance.getKibanaParams().put(kibanaApiKeys.kibana_cluster_id.name(), kibanaClusterId);
+        instance.getCredentials().put(ClusterConfig.credentialKeys.kibanaClusterId.name(), kibanaClusterId);
+        instance.getCredentials().put(ClusterConfig.credentialKeys.kibanaEndpoint.name(), "https://" + kibanaClusterId + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
     }
 
-    @SuppressWarnings("unchecked")
-    static boolean wasKibanaRequested(ServiceInstance instance) {
-        if (!instance.getParameters().containsKey(KIBANA)) {
-            return false;
+    private void loadValueOrDefault(ServiceInstance instance, kibanaApiKeys key, String defaultValue) {
+        if (!instance.getKibanaParams().containsKey(key.name())) {
+            instance.getKibanaParams().put(key.name(), defaultValue);
         }
-
-        return ((Map<String, Object>) instance.getParameters().get(KIBANA)).containsKey(ClusterConfig.credentialKeys.kibanaClusterId.name());
-    }
-
-    static boolean includesKibana(ServiceInstance instance) {
-        return instance.getParameters().containsKey(KIBANA);
-    }
-
-    private void loadValueOrDefault(kibanaApiKeys key, String defaultValue) {
-        if (!config.containsKey(key)) {
-            config.put(key, defaultValue);
-        }
-    }
-
-    public void configToParams(ServiceInstance instance) {
-        enumUtil.enumsToParams(config, KibanaConfig.KIBANA, instance);
     }
 }

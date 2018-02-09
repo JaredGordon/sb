@@ -36,50 +36,38 @@ class EceClient {
         this.eceRepo = eceRepo;
     }
 
-    void createCluster(ServiceInstance instance, boolean kibana) {
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("creating cluster: " + cc.getClusterName());
+    void createCluster(ServiceInstance instance) {
+        log.info("creating cluster: " + instance.getService_instance_id());
 
-        Object resp = eceRepo.createCluster(cc.getCreateClusterBody());
-        cc.processCreateResponse(resp);
-        cc.configToParams(instance);
-
-        if (kibana) {
-            KibanaConfig kc = new KibanaConfig(instance, eceConfig);
-            kc.configToParams(instance);
-        }
+        Object resp = eceRepo.createCluster(instance.getCreateClusterBody());
+        instance.processCreateResponse(resp, eceConfig);
     }
 
     void shutdownCluster(ServiceInstance instance) {
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("stopping cluster: " + cc.getClusterId());
-        eceRepo.shutdownCluster(cc.getClusterId());
+        log.info("stopping cluster: " + instance.getClusterId());
+        eceRepo.shutdownCluster(instance.getClusterId());
     }
 
     void deleteCluster(ServiceInstance instance) {
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("deleting cluster: " + cc.getClusterId());
-        eceRepo.deleteCluster(cc.getClusterId());
+        log.info("deleting cluster: " + instance.getClusterId());
+        eceRepo.deleteCluster(instance.getClusterId());
     }
 
     void bindToCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("binding app: " + binding.getApp_guid() + " to cluster: " + cc.getClusterName());
+        log.info("binding app: " + binding.getApp_guid() + " to cluster: " + instance.getClusterId());
     }
 
     void unbindFromCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + cc.getClusterName());
+        log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + instance.getClusterId());
     }
 
     private void createKibana(ServiceInstance instance) {
-        KibanaConfig kc = new KibanaConfig(instance, eceConfig);
-        log.info("creating kibana cluster: " + kc.getClusterName());
+        log.info("creating kibana cluster for instance: " + instance.getService_instance_id());
 
-        Object resp = eceRepo.createKibana(kc.getCreateClusterBody());
-        instance.getParameters().putAll(kc.extractCredentials(resp));
+        Object resp = eceRepo.createKibana(instance.getCreateKibanaBody());
+        instance.processCreateKibanaResponse(resp, eceConfig);
     }
 
     private String getClusterStatus(Object clusterInfo) {
@@ -88,7 +76,7 @@ class EceClient {
 
     boolean clusterExists(ServiceInstance instance) {
         List<String> l = JsonPath.parse(eceRepo.getClustersInfo()).read("$..cluster_name");
-        return l.contains(new ClusterConfig(instance, eceConfig).getClusterName());
+        return l.contains(instance.getClusterName());
     }
 
     boolean isClusterStarted(ServiceInstance instance) {
@@ -100,20 +88,19 @@ class EceClient {
     }
 
     private boolean isClusterInState(ServiceInstance instance, ClusterConfig.clusterState state) {
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        log.info("checking status on clusterId: " + cc.getClusterId());
-        String status = getClusterStatus(eceRepo.getClusterInfo(cc.getClusterId()));
+        log.info("checking status on clusterId: " + instance.getClusterId());
+        String status = getClusterStatus(eceRepo.getClusterInfo(instance.getClusterId()));
         return state.name().equalsIgnoreCase(status);
     }
 
     boolean isKibanaEnabled(ServiceInstance instance) {
         //do we even want kibana?
-        if (!KibanaConfig.includesKibana(instance)) {
+        if (!instance.isKibanaWanted()) {
             return false;
         }
 
         //if we have not yet started the enable process, do so now
-        if (!KibanaConfig.wasKibanaRequested(instance)) {
+        if (! instance.isKibanaRequested()) {
             createKibana(instance);
         }
 
@@ -122,8 +109,7 @@ class EceClient {
     }
 
     private boolean getKibanaEnabled(ServiceInstance instance) {
-        ClusterConfig cc = new ClusterConfig(instance, eceConfig);
-        List<Boolean> l = JsonPath.parse(eceRepo.getClusterInfo(cc.getClusterId())).read("$..associated_kibana_clusters[*].enabled");
+        List<Boolean> l = JsonPath.parse(eceRepo.getClusterInfo(instance.getClusterId())).read("$..associated_kibana_clusters[*].enabled");
         for (Boolean b : l) {
             if (!b) {
                 return false;

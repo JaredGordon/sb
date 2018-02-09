@@ -43,22 +43,22 @@ class TestConfig {
     static final String CLUSTER_NAME = "my-cluster";
 
     @MockBean
-    public ServiceInstanceRepository serviceInstanceRepository;
-
-    @MockBean
-    public ServiceBindingRepository serviceBindingRepository;
-
-    @MockBean
     EceRepo eceRepo;
 
-    @Bean
-    public EnumUtil enumUtil() {
-        return new EnumUtil();
-    }
+    @MockBean
+    ServiceInstanceRepository serviceInstanceRepository;
+
+    @MockBean
+    ServiceBindingRepository serviceBindingRepository;
 
     @Bean
     public CatalogService catalogService() {
         return new CatalogService();
+    }
+
+    @Bean
+    public EceConfig eceConfig() {
+        return new EceConfig("domain", "1234");
     }
 
     private static CreateServiceInstanceRequest createServiceInstanceRequestDefaults(String id) {
@@ -83,7 +83,7 @@ class TestConfig {
         return new ServiceInstance(createServiceInstanceRequestCustom(id));
     }
 
-    static Map<String, Object> getDefaultsParameters() {
+    private static Map<String, Object> getDefaultsParameters() {
         Map<String, Object> config = new HashMap<>();
         config.put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), TestConfig.CLUSTER_ID);
 
@@ -97,7 +97,7 @@ class TestConfig {
         return mapper.writer().writeValueAsString(o);
     }
 
-    static File getFile(String name) {
+    private static File getFile(String name) {
         ClassLoader classLoader = TestConfig.class.getClassLoader();
         return new File(classLoader.getResource(name).getFile());
     }
@@ -105,15 +105,6 @@ class TestConfig {
     @SuppressWarnings("unchecked")
     static Map<Object, Object> fromJson(String fileName) throws IOException {
         return (Map<Object, Object>) new ObjectMapper().readValue(getFile(fileName), HashMap.class);
-    }
-
-    @Bean
-    public EceConfig eceConfig() {
-        return new EceConfig("domain", "1234");
-    }
-
-    static Map<String, Object> defaultsServiceInstance() {
-        return new HashMap<>();
     }
 
     private static Map<String, Object> getCustomParameters() {

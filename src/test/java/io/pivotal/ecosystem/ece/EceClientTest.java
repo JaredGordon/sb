@@ -25,8 +25,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static io.pivotal.ecosystem.ece.TestConfig.CLUSTER_ID;
 import static io.pivotal.ecosystem.ece.TestConfig.CLUSTER_NAME;
@@ -50,7 +48,7 @@ public class EceClientTest {
     public void testGetClusterStatus() throws Exception {
         when(eceRepo.getClusterInfo(any(String.class))).thenReturn(TestConfig.fromJson("clusterInfo.json"));
         ServiceInstance instance = TestConfig.defaultsServiceInstance(CLUSTER_NAME);
-        instance.getParameters().put(ClusterConfig.credentialKeys.clusterId.name(), CLUSTER_ID);
+        instance.getClusterParams().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), CLUSTER_ID);
 
         assertTrue(eceClient.isClusterStarted(instance));
         assertFalse(eceClient.isClusterStopped(instance));
@@ -61,10 +59,8 @@ public class EceClientTest {
         when(eceRepo.getClusterInfo(any(String.class))).thenReturn(TestConfig.fromJson("clusterInfo.json"));
         when(eceRepo.createKibana(any(Object.class))).thenReturn(TestConfig.fromJson("createKibanaResponse.json"));
         ServiceInstance instance = TestConfig.defaultsServiceInstance(CLUSTER_NAME);
-        instance.getParameters().put(ClusterConfig.credentialKeys.clusterId.name(), CLUSTER_ID);
-        Map<String, Object> m = new HashMap<>();
-        m.put(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name(), "12345");
-        instance.getParameters().put(KibanaConfig.KIBANA, m);
+        instance.getClusterParams().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), CLUSTER_ID);
+        instance.getKibanaParams().put(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name(), "12345");
 
         assertTrue(eceClient.isKibanaEnabled(instance));
     }

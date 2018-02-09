@@ -24,8 +24,6 @@ import org.springframework.cloud.servicebroker.service.ServiceInstanceBindingSer
 import org.springframework.cloud.servicebroker.service.ServiceInstanceService;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-
 @Service
 @Slf4j
 public class EceBroker implements ServiceInstanceService, ServiceInstanceBindingService {
@@ -66,7 +64,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
 
         try {
             log.info("creating service instance: " + request.getServiceInstanceId() + " service definition: " + request.getServiceDefinitionId());
-            eceClient.createCluster(instance, isKibana(instance));
+            eceClient.createCluster(instance);
 
             GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
             lo.withOperationState(OperationState.IN_PROGRESS);
@@ -83,24 +81,30 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
         }
     }
 
-    private boolean isKibana(ServiceInstance instance) {
-        return instance.getPlan_id().toLowerCase().contains(KibanaConfig.KIBANA);
-    }
-
-    private ServiceInstance saveInstance(ServiceInstance instance) {
+    private void saveInstance(ServiceInstance instance) {
         log.info("saving service instance to repo: " + instance.getService_instance_id());
         serviceInstanceRepository.save(instance);
-        return instance;
     }
 
     @Override
     public GetLastServiceOperationResponse getLastOperation(GetLastServiceOperationRequest getLastServiceOperationRequest) {
-        ServiceInstance instance = serviceInstanceRepository.findOne(getLastServiceOperationRequest.getServiceInstanceId());
+        log.info("getting last operation for service: " + getLastServiceOperationRequest.getServiceInstanceId());
+
+        ServiceInstance instance;
+        try {
+            instance = serviceInstanceRepository.findOne(getLastServiceOperationRequest.getServiceInstanceId());
+        } catch (Throwable t) {
+            log.error("error retrieving instance.", t);
+            return new GetLastServiceOperationResponse().withOperationState(OperationState.FAILED);
+        }
+
         if (instance == null) {
             throw new ServiceInstanceDoesNotExistException(getLastServiceOperationRequest.getServiceInstanceId());
         }
 
         GetLastServiceOperationResponse lo = instance.getLastOperation();
+        log.info("previous last operation was: " + lo.getState());
+
         if (!OperationState.IN_PROGRESS.equals(lo.getState())) {
             return lo;
         }
@@ -127,7 +131,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             }
 
             // So, cluster is started. If we don't want kibana, we are done.
-            if (!KibanaConfig.includesKibana(instance)) {
+            if (!instance.isKibanaWanted()) {
                 log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started.");
                 instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
                 instance.getLastOperation().withDescription("created.");
@@ -136,13 +140,14 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             }
 
             // We must want kibana too, but if it is not ready we are still in process
+            log.info("checking to see if kibana in involved...");
             if (!eceClient.isKibanaEnabled(instance)) {
-                log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " started, enabling kibana.");
+                log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " started, kibana pending.");
                 return lo;
             }
 
             // Kibana is ready too, we are done.
-            log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started, kibana enabled");
+            log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started, kibana started");
             instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
             instance.getLastOperation().withDescription("created");
             saveInstance(instance);
@@ -209,15 +214,12 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
 
         try {
             eceClient.bindToCluster(instance, binding);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> creds = (Map<String, Object>)instance.getParameters().get(ClusterConfig.CREDENTIALS);
-            binding.getCredentials().putAll(creds);
+            binding.getCredentials().putAll(instance.getCredentials());
 
             log.info("saving binding: " + request.getBindingId());
             serviceBindingRepository.save(binding);
 
-            return new CreateServiceInstanceAppBindingResponse().withCredentials(creds);
+            return new CreateServiceInstanceAppBindingResponse().withCredentials(binding.getCredentials());
 
         } catch (Throwable t) {
             throw new ServiceBrokerException("error creating binding.", t);

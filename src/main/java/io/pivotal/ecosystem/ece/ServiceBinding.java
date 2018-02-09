@@ -34,37 +34,26 @@ public class ServiceBinding implements Serializable {
     public static final long serialVersionUID = 1L;
 
     @JsonSerialize
-//    @JsonProperty("id")
     @Id
     private String id;
 
     @JsonSerialize
-//    @JsonProperty("service_id")
     private String service_id;
 
     @JsonSerialize
-//    @JsonProperty("plan_id")
     private String plan_id;
 
     @JsonSerialize
-//    @JsonProperty("app_guid")
     private String app_guid;
 
     @JsonSerialize
-//    @JsonProperty("bind_resource")
     private final Map<String, Object> bind_resource = new HashMap<>();
 
     @JsonSerialize
-//    @JsonProperty("parameters")
     private final Map<String, Object> parameters = new HashMap<>();
 
     @JsonSerialize
-//    @JsonProperty("credentials")
     private final Map<String, Object> credentials = new HashMap<>();
-
-//    @JsonSerialize
-//    @JsonProperty("lastOperation")
-//    private LastOperation lastOperation;
 
     public ServiceBinding() {
         super();
@@ -86,14 +75,4 @@ public class ServiceBinding implements Serializable {
             getParameters().putAll(request.getParameters());
         }
     }
-
-//    public Object getParameter(@NonNull String key) {
-//        return this.parameters.get(key);
-//    }
-
-//    public CreateServiceInstanceAppBindingResponse getCreateResponse() {
-//        CreateServiceInstanceAppBindingResponse resp = new CreateServiceInstanceAppBindingResponse();
-//        resp.withCredentials(credentials);
-//        return resp;
-//    }
 }

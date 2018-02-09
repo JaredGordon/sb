@@ -38,10 +38,10 @@ interface EceRepo {
     Object createCluster(@Param("body") Object body);
 
     @RequestLine("DELETE /clusters/elasticsearch/{clusterId}")
-    Object deleteCluster(@Param("clusterId") String clusterId);
+    void deleteCluster(@Param("clusterId") String clusterId);
 
     @RequestLine("POST /clusters/elasticsearch/{clusterId}/_shutdown")
-    Object shutdownCluster(@Param("clusterId") String clusterId);
+    void shutdownCluster(@Param("clusterId") String clusterId);
 
     @RequestLine("POST /clusters/kibana")
     @Headers("Content-Type: application/json")

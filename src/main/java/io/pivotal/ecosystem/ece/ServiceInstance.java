@@ -19,11 +19,9 @@ package io.pivotal.ecosystem.ece;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.servicebroker.model.CreateServiceInstanceRequest;
 import org.springframework.cloud.servicebroker.model.GetLastServiceOperationResponse;
-import org.springframework.cloud.servicebroker.model.OperationState;
 import org.springframework.cloud.servicebroker.model.UpdateServiceInstanceRequest;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
@@ -40,6 +38,10 @@ public class ServiceInstance implements Serializable {
     public static final String DELETE_REQUEST_ID = "DELETE_REQUEST_ID";
 
     public static final long serialVersionUID = 1L;
+
+    private final EnumUtil enumUtil = new EnumUtil();
+    private final ClusterConfig clusterConfig = new ClusterConfig();
+    private final KibanaConfig kibanaConfig = new KibanaConfig();
 
     @JsonSerialize
     @Id
@@ -58,7 +60,13 @@ public class ServiceInstance implements Serializable {
     private String space_guid;
 
     @JsonSerialize
-    private final Map<String, Object> parameters = new HashMap<>();
+    private final Map<String, String> clusterParams = new HashMap<>();
+
+    @JsonSerialize
+    private final Map<String, String> credentials = new HashMap<>();
+
+    @JsonSerialize
+    private final Map<String, String> kibanaParams = new HashMap<>();
 
     @JsonSerialize
     private GetLastServiceOperationResponse lastOperation;
@@ -78,7 +86,8 @@ public class ServiceInstance implements Serializable {
         setPlan_id(request.getPlanId());
         setService_id(request.getServiceDefinitionId());
         setSpace_guid(request.getSpaceGuid());
-        processParameters(request.getParameters());
+
+        processParams(request.getParameters());
     }
 
     public ServiceInstance(UpdateServiceInstanceRequest request) {
@@ -86,31 +95,51 @@ public class ServiceInstance implements Serializable {
         setService_instance_id(request.getServiceInstanceId());
         setPlan_id(request.getPlanId());
         setService_id(request.getServiceDefinitionId());
-        processParameters(request.getParameters());
+
+        processParams(request.getParameters());
     }
 
-    private void processParameters(Map<String, Object> m) {
-        log.debug("processing parameters...");
-        if (m != null) {
-            this.parameters.putAll(m);
+    private void processParams(Map<String, Object> params) {
+        if (params == null) {
+            return;
         }
-        log.debug("processed parameters: ", m);
+
+        getClusterParams().putAll(enumUtil.paramsToClusterConfigParams(params));
+        clusterConfig.processParams(this);
+
+        getKibanaParams().putAll(enumUtil.paramsToKibanaParams(params));
+        kibanaConfig.processParams(this);
     }
 
-    private boolean isInState(@NonNull OperationState state) {
-        return getLastOperation().getState().equals(state);
+    public Object getCreateClusterBody() {
+        return clusterConfig.getCreateClusterBody(this);
     }
 
-    public boolean isInProgress() {
-        return isInState(OperationState.IN_PROGRESS);
+    public Object getCreateKibanaBody() {
+        return kibanaConfig.getCreateClusterBody(this);
     }
 
-    public boolean isFailed() {
-        return isInState(OperationState.FAILED);
+    public void processCreateResponse(Object response, EceConfig eceConfig) {
+        clusterConfig.processCreateResponse(response, this, eceConfig);
     }
 
-    public boolean isSuccessful() {
-        return isInState(OperationState.SUCCEEDED);
+    public void processCreateKibanaResponse(Object response, EceConfig eceConfig) {
+        kibanaConfig.processCreateResponse(response, this, eceConfig);
     }
 
+    public String getClusterId() {
+        return getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name());
+    }
+
+    public String getClusterName() {
+        return getClusterParams().get(ClusterConfig.eceApiKeys.cluster_name.name());
+    }
+
+    public boolean isKibanaWanted() {
+        return getKibanaParams().containsKey(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name());
+    }
+
+    public boolean isKibanaRequested() {
+        return isKibanaWanted() && getKibanaParams().get(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name()).equals(KibanaConfig.REQUESTED);
+    }
 }
