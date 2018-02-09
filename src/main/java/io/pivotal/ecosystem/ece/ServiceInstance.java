@@ -100,14 +100,12 @@ public class ServiceInstance implements Serializable {
     }
 
     private void processParams(Map<String, Object> params) {
-        if (params == null) {
-            return;
+        if (params != null) {
+            getClusterParams().putAll(enumUtil.paramsToClusterConfigParams(params));
+            getKibanaParams().putAll(enumUtil.paramsToKibanaParams(params));
         }
 
-        getClusterParams().putAll(enumUtil.paramsToClusterConfigParams(params));
         clusterConfig.processParams(this);
-
-        getKibanaParams().putAll(enumUtil.paramsToKibanaParams(params));
         kibanaConfig.processParams(this);
     }
 

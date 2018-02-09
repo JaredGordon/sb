@@ -43,12 +43,10 @@ public class KibanaConfigTest {
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
 
         assertEquals(instance.getClusterParams().get(ClusterConfig.eceApiKeys.memory_per_node.name()), ClusterConfig.DEFAULT_MEMORY_PER_NODE);
-        assertEquals(instance.getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()), TestConfig.CLUSTER_ID);
         assertEquals(instance.getClusterParams().get(ClusterConfig.eceApiKeys.node_count_per_zone.name()), ClusterConfig.DEFAULT_NODE_COUNT_PER_ZONE);
         assertEquals(instance.getClusterParams().get(ClusterConfig.eceApiKeys.zone_count.name()), ClusterConfig.DEFAULT_ZONE_COUNT);
 
         assertEquals(instance.getKibanaParams().get(KibanaConfig.kibanaApiKeys.memory_per_node.name()), KibanaConfig.DEFAULT_MEMORY_PER_NODE);
-        assertEquals(instance.getKibanaParams().get(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id.name()), TestConfig.CLUSTER_ID);
         assertEquals(instance.getKibanaParams().get(KibanaConfig.kibanaApiKeys.node_count_per_zone.name()), KibanaConfig.DEFAULT_NODE_COUNT_PER_ZONE);
         assertEquals(instance.getKibanaParams().get(KibanaConfig.kibanaApiKeys.zone_count.name()), KibanaConfig.DEFAULT_ZONE_COUNT);
 
@@ -61,6 +59,7 @@ public class KibanaConfigTest {
         assertNotNull(s1);
 
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
+        instance.getClusterParams().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), TestConfig.CLUSTER_ID);
 
         String s2 = instance.getCreateKibanaBody().toString();
         assertNotNull(s2);

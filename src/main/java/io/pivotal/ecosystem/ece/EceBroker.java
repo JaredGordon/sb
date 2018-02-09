@@ -17,6 +17,7 @@
 
 package io.pivotal.ecosystem.ece;
 
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.servicebroker.exception.*;
 import org.springframework.cloud.servicebroker.model.*;
@@ -185,9 +186,27 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
 
             return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.IN_PROGRESS.getValue());
 
-        } catch (Throwable t) {
-            log.error("error deleting cluster", t);
-            throw new ServiceBrokerException("error deleting cluster", t);
+        } catch (FeignException e) {
+            if(e.status() == 404) {
+                //cluster does not exist, go ahead and delete the instance
+                log.warn("cluster: " + serviceInstance.getService_instance_id() + " not found. Deleting instance.");
+                GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
+                lo.withOperationState(OperationState.SUCCEEDED);
+                lo.withDescription("cluster not found, instance deleted.");
+                lo.withDeleteOperation(true);
+                serviceInstance.setLastOperation(lo);
+                saveInstance(serviceInstance);
+                return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.SUCCEEDED.getValue());
+            }
+
+            log.error("error deleting cluster", e);
+            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
+            lo.withOperationState(OperationState.FAILED);
+            lo.withDescription("delete failed.");
+            lo.withDeleteOperation(true);
+            serviceInstance.setLastOperation(lo);
+            saveInstance(serviceInstance);
+            return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.FAILED.getValue());
         }
     }
 
