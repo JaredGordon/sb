@@ -18,11 +18,15 @@
 package io.pivotal.ecosystem.ece;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.servicebroker.model.CreateServiceInstanceRequest;
 import org.springframework.cloud.servicebroker.model.GetLastServiceOperationResponse;
-import org.springframework.cloud.servicebroker.model.UpdateServiceInstanceRequest;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 
@@ -94,44 +98,18 @@ public class ServiceInstance implements Serializable {
         processParams(request.getParameters());
     }
 
-    public ServiceInstance(UpdateServiceInstanceRequest request) {
-        this();
-        setService_instance_id(request.getServiceInstanceId());
-        setPlan_id(request.getPlanId());
-        setService_id(request.getServiceDefinitionId());
-
-        processParams(request.getParameters());
-    }
-
     private void processParams(Map<String, Object> params) {
         if (params != null) {
-            EnumUtil enumUtil = new EnumUtil();
-            getClusterParams().putAll(enumUtil.paramsToClusterConfigParams(params));
-            getKibanaParams().putAll(enumUtil.paramsToKibanaParams(params));
+            getClusterParams().putAll(EnumUtil.paramsToClusterConfigParams(params));
+            getKibanaParams().putAll(EnumUtil.paramsToKibanaParams(params));
         }
 
-        new ClusterConfig().processParams(this);
-        new KibanaConfig().processParams(this);
+        processClusterParams();
+        processKibanaParams();
 
         if (getPlan_id().toLowerCase().contains(KibanaConfig.KIBANA)) {
             setKibanaWanted(true);
         }
-    }
-
-    public Object getCreateClusterBody() {
-        return new ClusterConfig().getCreateClusterBody(this);
-    }
-
-    public Object getCreateKibanaBody() {
-        return new KibanaConfig().getCreateClusterBody(this);
-    }
-
-    public void processCreateResponse(Object response, EceConfig eceConfig) {
-        new ClusterConfig().processCreateResponse(response, this, eceConfig);
-    }
-
-    public void processCreateKibanaResponse(Object response, EceConfig eceConfig) {
-        new KibanaConfig().processCreateResponse(response, this, eceConfig);
     }
 
     public String getClusterId() {
@@ -140,5 +118,93 @@ public class ServiceInstance implements Serializable {
 
     public String getClusterName() {
         return getClusterParams().get(ClusterConfig.eceApiKeys.cluster_name.name());
+    }
+
+    private void processClusterParams() {
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.cluster_name.name(), getService_instance_id());
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.zone_count.name(), ClusterConfig.DEFAULT_ZONE_COUNT);
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.elasticsearch_version.name(), ClusterConfig.DEFAULT_ELASTICSEARCH_VERSION);
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.memory_per_node.name(), ClusterConfig.DEFAULT_MEMORY_PER_NODE);
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.node_count_per_zone.name(), ClusterConfig.DEFAULT_NODE_COUNT_PER_ZONE);
+        getClusterParams().putIfAbsent(ClusterConfig.eceApiKeys.topology_type.name(), ClusterConfig.DEFAULT_TOPOLOGY_TYPE);
+    }
+
+    String getCreateClusterBody() {
+        JsonObject cluster = new JsonObject();
+        JsonObject plan = new JsonObject();
+        JsonObject elasticSearch = new JsonObject();
+        JsonArray clusterTopology = new JsonArray();
+        JsonObject topology = new JsonObject();
+
+        cluster.addProperty(ClusterConfig.eceApiKeys.cluster_name.name(), getClusterParams().get(ClusterConfig.eceApiKeys.cluster_name.name()));
+        elasticSearch.addProperty(ClusterConfig.eceApiKeys.version.name(), getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_version.name()));
+        plan.add(ClusterConfig.eceApiKeys.elasticsearch.name(), elasticSearch);
+        plan.addProperty(ClusterConfig.eceApiKeys.zone_count.name(), Integer.valueOf(getClusterParams().get(ClusterConfig.eceApiKeys.zone_count.name())));
+
+        topology.addProperty(ClusterConfig.eceApiKeys.topology_type.name(), getClusterParams().get(ClusterConfig.eceApiKeys.topology_type.name()));
+        topology.addProperty(ClusterConfig.eceApiKeys.memory_per_node.name(), Integer.valueOf(getClusterParams().get(ClusterConfig.eceApiKeys.memory_per_node.name())));
+        topology.addProperty(ClusterConfig.eceApiKeys.node_count_per_zone.name(), Integer.valueOf(getClusterParams().get(ClusterConfig.eceApiKeys.node_count_per_zone.name())));
+        clusterTopology.add(topology);
+        plan.add(ClusterConfig.eceApiKeys.cluster_topology.name(), clusterTopology);
+        cluster.add(ClusterConfig.eceApiKeys.plan.name(), plan);
+
+        return new GsonBuilder().create().toJson(cluster);
+    }
+
+    void processCreateClusterResponse(Object createClusterResponse, EceConfig eceConfig) {
+        DocumentContext dc = JsonPath.parse(createClusterResponse);
+        getClusterParams().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), dc.read("$." + ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()));
+
+        getCredentials().put(ClusterConfig.credentialKeys.clusterId.name(), getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()));
+        getCredentials().put(ClusterConfig.credentialKeys.username.name(), dc.read("$." + ClusterConfig.eceApiKeys.credentials.name() + "." + ClusterConfig.eceApiKeys.username.name()));
+        getCredentials().put(ClusterConfig.credentialKeys.password.name(), dc.read("$." + ClusterConfig.eceApiKeys.credentials.name() + "." + ClusterConfig.eceApiKeys.password.name()));
+
+        getCredentials().put(ClusterConfig.credentialKeys.host.name(), eceConfig.getElasticsearchDomain());
+        getCredentials().put(ClusterConfig.credentialKeys.port.name(), eceConfig.getElasticsearchPort());
+        getCredentials().put(ClusterConfig.credentialKeys.uri.name(), "ece://" + getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        getCredentials().put(ClusterConfig.credentialKeys.eceEndpoint.name(), "https://" + getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()) + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+    }
+
+    private void processKibanaParams() {
+        getKibanaParams().put(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id.name(), getClusterId());
+
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.cluster_name.name(), getClusterName());
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.zone_count.name(), KibanaConfig.DEFAULT_ZONE_COUNT);
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.version.name(), KibanaConfig.DEFAULT_KIBANA_VERSION);
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.memory_per_node.name(), KibanaConfig.DEFAULT_MEMORY_PER_NODE);
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.node_count_per_zone.name(), KibanaConfig.DEFAULT_NODE_COUNT_PER_ZONE);
+        getKibanaParams().putIfAbsent(KibanaConfig.kibanaApiKeys.cluster_topology.name(), KibanaConfig.DEFAULT_TOPOLOGY_TYPE);
+    }
+
+    String getCreateKibanaBody() {
+        JsonObject cluster = new JsonObject();
+        JsonObject plan = new JsonObject();
+        JsonObject kibana = new JsonObject();
+        JsonArray clusterTopology = new JsonArray();
+        JsonObject topology = new JsonObject();
+
+        cluster.addProperty(KibanaConfig.kibanaApiKeys.cluster_name.name(), getKibanaParams().get(KibanaConfig.kibanaApiKeys.cluster_name.name()));
+        cluster.addProperty(KibanaConfig.kibanaApiKeys.elasticsearch_cluster_id.name(), getClusterParams().get(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name()));
+        plan.addProperty(KibanaConfig.kibanaApiKeys.zone_count.name(), Integer.valueOf(getKibanaParams().get(KibanaConfig.kibanaApiKeys.zone_count.name())));
+
+        topology.addProperty(KibanaConfig.kibanaApiKeys.memory_per_node.name(), Integer.valueOf(getKibanaParams().get(KibanaConfig.kibanaApiKeys.memory_per_node.name())));
+        topology.addProperty(KibanaConfig.kibanaApiKeys.node_count_per_zone.name(), Integer.valueOf(getKibanaParams().get(KibanaConfig.kibanaApiKeys.node_count_per_zone.name())));
+        clusterTopology.add(topology);
+        plan.add(KibanaConfig.kibanaApiKeys.cluster_topology.name(), clusterTopology);
+        kibana.addProperty(KibanaConfig.kibanaApiKeys.version.name(), KibanaConfig.DEFAULT_KIBANA_VERSION);
+        plan.add(KibanaConfig.KIBANA, kibana);
+
+        cluster.add(KibanaConfig.kibanaApiKeys.plan.name(), plan);
+
+        return new GsonBuilder().create().toJson(cluster);
+    }
+
+    void processCreateKibanaResponse(Object createClusterResponse, EceConfig eceConfig) {
+        String kibanaClusterId = JsonPath.parse(createClusterResponse).read("$." + KibanaConfig.kibanaApiKeys.kibana_cluster_id.name());
+        getKibanaParams().put(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name(), kibanaClusterId);
+        getCredentials().put(ClusterConfig.credentialKeys.kibanaClusterId.name(), kibanaClusterId);
+        getCredentials().put(ClusterConfig.credentialKeys.kibanaEndpoint.name(), "https://" + kibanaClusterId +
+                "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        setKibanaRequested(true);
     }
 }

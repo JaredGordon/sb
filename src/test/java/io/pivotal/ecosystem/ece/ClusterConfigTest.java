@@ -40,7 +40,7 @@ public class ClusterConfigTest {
     @Test
     public void testWithInstanceAndDefaults() throws Exception {
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
-        instance.processCreateResponse(TestConfig.fromJson("createClusterResponse.json"), eceConfig);
+        instance.processCreateClusterResponse(TestConfig.fromJson("createClusterResponse.json"), eceConfig);
 
         assertEquals("d3228e4268d449e1be1a918e0eac49e3", instance.getCredentials().get(credentialKeys.clusterId.name()));
         assertEquals("aUser", instance.getCredentials().get(credentialKeys.username.name()));
@@ -74,7 +74,7 @@ public class ClusterConfigTest {
         assertNotNull(o);
 
         ServiceInstance instance = TestConfig.defaultsServiceInstance(TestConfig.SI_ID);
-        instance.processCreateResponse(o, eceConfig);
+        instance.processCreateClusterResponse(o, eceConfig);
 
         Map<String, String> m2 = instance.getCredentials();
         assertNotNull(m2);

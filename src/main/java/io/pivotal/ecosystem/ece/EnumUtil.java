@@ -2,16 +2,15 @@ package io.pivotal.ecosystem.ece;
 
 import java.util.*;
 
-class EnumUtil {
+abstract class EnumUtil {
 
     private static final List<String> configKeys = EnumUtil.getEnumNames(ClusterConfig.eceApiKeys.class);
     private static final List<String> kibanaKeys = EnumUtil.getEnumNames(KibanaConfig.kibanaApiKeys.class);
-
     private static List<String> getEnumNames(Class<? extends Enum<?>> e) {
         return Arrays.asList(Arrays.toString(e.getEnumConstants()).replaceAll("^.|.$", "").split(", "));
     }
 
-    Map<String, String> paramsToKibanaParams(Map<String, Object> params) {
+    static Map<String, String> paramsToKibanaParams(Map<String, Object> params) {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> kibanaConfigParams = (Map<String, Object>) params.get(KibanaConfig.KIBANA);
@@ -27,7 +26,7 @@ class EnumUtil {
         return enumsToParams(e);
     }
 
-    Map<String, String> paramsToClusterConfigParams(Map<String, Object> params) {
+    static Map<String, String> paramsToClusterConfigParams(Map<String, Object> params) {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> clusterConfigParams = (Map<String, Object>) params.get(ClusterConfig.ELASTIC_SEARCH);
@@ -43,7 +42,7 @@ class EnumUtil {
         return enumsToParams(e);
     }
 
-    private Map<String, String> enumsToParams(EnumMap<?, String> enumMap) {
+    private static Map<String, String> enumsToParams(EnumMap<?, String> enumMap) {
         Map<String, String> m = new HashMap<>();
         for (Enum<?> e : enumMap.keySet()) {
             m.put(e.name(), enumMap.get(e));

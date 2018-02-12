@@ -40,7 +40,7 @@ class EceClient {
         log.info("creating cluster: " + instance.getService_instance_id());
 
         Object resp = eceRepo.createCluster(instance.getCreateClusterBody());
-        instance.processCreateResponse(resp, eceConfig);
+        instance.processCreateClusterResponse(resp, eceConfig);
     }
 
     void shutdownCluster(ServiceInstance instance) {
@@ -55,12 +55,12 @@ class EceClient {
 
     void bindToCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        log.info("binding app: " + binding.getApp_guid() + " to cluster: " + instance.getClusterId());
+        log.info("binding app: " + binding.getApp_guid() + " to cluster: " + instance.getService_instance_id());
     }
 
     void unbindFromCluster(ServiceInstance instance, ServiceBinding binding) {
         //no-op for now
-        log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + instance.getClusterId());
+        log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + instance.getService_instance_id());
     }
 
     void createKibana(ServiceInstance instance) {
@@ -100,7 +100,7 @@ class EceClient {
         }
 
         //if we have not yet started the enable process, do so now
-        if (! instance.isKibanaRequested()) {
+        if (!instance.isKibanaRequested()) {
             createKibana(instance);
             return false;
         }

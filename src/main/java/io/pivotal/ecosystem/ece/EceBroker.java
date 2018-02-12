@@ -217,7 +217,6 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
     @Override
     public CreateServiceInstanceBindingResponse createServiceInstanceBinding(CreateServiceInstanceBindingRequest request) {
         ServiceInstance instance = serviceInstanceRepository.findOne(request.getServiceInstanceId());
-
         if (instance == null) {
             throw new ServiceInstanceDoesNotExistException(request.getServiceInstanceId());
         }
