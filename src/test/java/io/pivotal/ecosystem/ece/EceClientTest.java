@@ -44,6 +44,9 @@ public class EceClientTest {
     @Autowired
     private EceClient eceClient;
 
+    @Autowired
+    private EceConfig eceConfig;
+
     @Test
     public void testGetClusterStatus() throws Exception {
         when(eceRepo.getClusterInfo(any(String.class))).thenReturn(TestConfig.fromJson("clusterInfo.json"));
@@ -61,7 +64,9 @@ public class EceClientTest {
         ServiceInstance instance = TestConfig.defaultsServiceInstance(CLUSTER_NAME);
         instance.getClusterParams().put(ClusterConfig.eceApiKeys.elasticsearch_cluster_id.name(), CLUSTER_ID);
         instance.getKibanaParams().put(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name(), "12345");
-
+        instance.setKibanaWanted(true);
+        Object o = eceRepo.createKibana(TestConfig.fromJson("createKibanaRequestBody.json"));
+        instance.processCreateKibanaResponse(o, eceConfig);
         assertTrue(eceClient.isKibanaEnabled(instance));
     }
 

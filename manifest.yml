@@ -8,10 +8,11 @@ applications:
   services: [ece-redis]
   env:
     SPRING_PROFILES_ACTIVE: cloud
-    ECE_URL: 10.20.30.40
-    ECE_ADMIN_UID: secret
-    ECE_ADMIN_PW: secret
-    ELASTICSEARCH_DOMAIN: secret
-    ELASTICSEARCH_PORT: secret
-    SECURITY_USER_NAME: someUserNameForTheBroker
-    SECURITY_USER_PASSWORD: somePasswordForTheBroker
+    ECE_HOST: 10.20.30.40
+    ECE_PORT: 443
+    ECE_ADMIN_UID: uid
+    ECE_ADMIN_PW: pw
+    ELASTICSEARCH_DOMAIN: domain
+    ELASTICSEARCH_PORT: 9243
+    SECURITY_USER_NAME: user
+    SECURITY_USER_PASSWORD: pass

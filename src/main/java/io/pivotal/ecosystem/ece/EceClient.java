@@ -63,7 +63,7 @@ class EceClient {
         log.info("unbinding app: " + binding.getApp_guid() + " from cluster: " + instance.getClusterId());
     }
 
-    private void createKibana(ServiceInstance instance) {
+    void createKibana(ServiceInstance instance) {
         log.info("creating kibana cluster for instance: " + instance.getService_instance_id());
 
         Object resp = eceRepo.createKibana(instance.getCreateKibanaBody());
@@ -102,6 +102,7 @@ class EceClient {
         //if we have not yet started the enable process, do so now
         if (! instance.isKibanaRequested()) {
             createKibana(instance);
+            return false;
         }
 
         //if we've requested kibana, check to see if it's enabled yet

@@ -35,7 +35,6 @@ class KibanaConfig {
     public static final String DEFAULT_KIBANA_VERSION = "5.3.0";
     public static final String DEFAULT_NODE_COUNT_PER_ZONE = "3";
     public static final String DEFAULT_TOPOLOGY_TYPE = "default";
-    public static final String REQUESTED = "requested";
 
     public enum kibanaApiKeys {
         cluster_name,
@@ -87,7 +86,9 @@ class KibanaConfig {
         String kibanaClusterId = JsonPath.parse(createClusterResponse).read("$." + kibanaApiKeys.kibana_cluster_id.name());
         instance.getKibanaParams().put(kibanaApiKeys.kibana_cluster_id.name(), kibanaClusterId);
         instance.getCredentials().put(ClusterConfig.credentialKeys.kibanaClusterId.name(), kibanaClusterId);
-        instance.getCredentials().put(ClusterConfig.credentialKeys.kibanaEndpoint.name(), "https://" + kibanaClusterId + "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        instance.getCredentials().put(ClusterConfig.credentialKeys.kibanaEndpoint.name(), "https://" + kibanaClusterId +
+                "." + eceConfig.getElasticsearchDomain() + ":" + eceConfig.getElasticsearchPort());
+        instance.setKibanaRequested(true);
     }
 
     private void loadValueOrDefault(ServiceInstance instance, kibanaApiKeys key, String defaultValue) {

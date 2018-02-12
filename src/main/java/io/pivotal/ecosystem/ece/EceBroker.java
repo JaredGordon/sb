@@ -67,9 +67,9 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             log.info("creating service instance: " + request.getServiceInstanceId() + " service definition: " + request.getServiceDefinitionId());
             eceClient.createCluster(instance);
 
-            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
-            lo.withOperationState(OperationState.IN_PROGRESS);
-            lo.withDescription("creating....");
+            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse()
+                    .withOperationState(OperationState.IN_PROGRESS)
+                    .withDescription("creating....");
             instance.setLastOperation(lo);
             saveInstance(instance);
 
@@ -111,6 +111,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
         }
 
         try {
+            //Are we deleting?
             if (lo.isDeleteOperation()) {
                 if (!eceClient.isClusterStopped(instance)) {
                     log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " delete in progress, waiting for cluster to stop.");
@@ -119,8 +120,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
 
                 log.info("deleting cluster: " + getLastServiceOperationRequest.getServiceInstanceId());
                 eceClient.deleteCluster(instance);
-                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
-                instance.getLastOperation().withDescription("deleted.");
+                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED).withDescription("deleted.");
                 saveInstance(instance);
                 return instance.getLastOperation();
             }
@@ -134,8 +134,7 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             // So, cluster is started. If we don't want kibana, we are done.
             if (!instance.isKibanaWanted()) {
                 log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started.");
-                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
-                instance.getLastOperation().withDescription("created.");
+                instance.getLastOperation().withOperationState(OperationState.SUCCEEDED).withDescription("created.");
                 saveInstance(instance);
                 return instance.getLastOperation();
             }
@@ -143,14 +142,14 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
             // We must want kibana too, but if it is not ready we are still in process
             log.info("checking to see if kibana in involved...");
             if (!eceClient.isKibanaEnabled(instance)) {
+                saveInstance(instance);
                 log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " started, kibana pending.");
                 return lo;
             }
 
             // Kibana is ready too, we are done.
             log.info("cluster: " + getLastServiceOperationRequest.getServiceInstanceId() + " create completed, cluster started, kibana started");
-            instance.getLastOperation().withOperationState(OperationState.SUCCEEDED);
-            instance.getLastOperation().withDescription("created");
+            instance.getLastOperation().withOperationState(OperationState.SUCCEEDED).withDescription("created");
             saveInstance(instance);
             return instance.getLastOperation();
         } catch (Throwable t) {
@@ -177,33 +176,33 @@ public class EceBroker implements ServiceInstanceService, ServiceInstanceBinding
         try {
             eceClient.shutdownCluster(serviceInstance);
 
-            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
-            lo.withOperationState(OperationState.IN_PROGRESS);
-            lo.withDescription("deleting....");
-            lo.withDeleteOperation(true);
+            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse()
+                    .withOperationState(OperationState.IN_PROGRESS)
+                    .withDescription("deleting....")
+                    .withDeleteOperation(true);
             serviceInstance.setLastOperation(lo);
             saveInstance(serviceInstance);
 
             return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.IN_PROGRESS.getValue());
 
         } catch (FeignException e) {
-            if(e.status() == 404) {
+            if (e.status() == 404) {
                 //cluster does not exist, go ahead and delete the instance
                 log.warn("cluster: " + serviceInstance.getService_instance_id() + " not found. Deleting instance.");
-                GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
-                lo.withOperationState(OperationState.SUCCEEDED);
-                lo.withDescription("cluster not found, instance deleted.");
-                lo.withDeleteOperation(true);
+                GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse()
+                        .withOperationState(OperationState.SUCCEEDED)
+                        .withDescription("cluster not found, instance deleted.")
+                        .withDeleteOperation(true);
                 serviceInstance.setLastOperation(lo);
                 saveInstance(serviceInstance);
                 return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.SUCCEEDED.getValue());
             }
 
             log.error("error deleting cluster", e);
-            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse();
-            lo.withOperationState(OperationState.FAILED);
-            lo.withDescription("delete failed.");
-            lo.withDeleteOperation(true);
+            GetLastServiceOperationResponse lo = new GetLastServiceOperationResponse()
+                    .withOperationState(OperationState.FAILED)
+                    .withDescription("delete failed.")
+                    .withDeleteOperation(true);
             serviceInstance.setLastOperation(lo);
             saveInstance(serviceInstance);
             return new DeleteServiceInstanceResponse().withAsync(true).withOperation(OperationState.FAILED.getValue());

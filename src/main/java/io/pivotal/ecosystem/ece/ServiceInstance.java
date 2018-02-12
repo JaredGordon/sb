@@ -39,9 +39,13 @@ public class ServiceInstance implements Serializable {
 
     public static final long serialVersionUID = 1L;
 
-    private final EnumUtil enumUtil = new EnumUtil();
-    private final ClusterConfig clusterConfig = new ClusterConfig();
-    private final KibanaConfig kibanaConfig = new KibanaConfig();
+    //was kibana requested by user?
+    @JsonSerialize
+    private boolean kibanaWanted = false;
+
+    //has kibana been requested from ece?
+    @JsonSerialize
+    private boolean kibanaRequested = false;
 
     @JsonSerialize
     @Id
@@ -101,28 +105,33 @@ public class ServiceInstance implements Serializable {
 
     private void processParams(Map<String, Object> params) {
         if (params != null) {
+            EnumUtil enumUtil = new EnumUtil();
             getClusterParams().putAll(enumUtil.paramsToClusterConfigParams(params));
             getKibanaParams().putAll(enumUtil.paramsToKibanaParams(params));
         }
 
-        clusterConfig.processParams(this);
-        kibanaConfig.processParams(this);
+        new ClusterConfig().processParams(this);
+        new KibanaConfig().processParams(this);
+
+        if (getPlan_id().toLowerCase().contains(KibanaConfig.KIBANA)) {
+            setKibanaWanted(true);
+        }
     }
 
     public Object getCreateClusterBody() {
-        return clusterConfig.getCreateClusterBody(this);
+        return new ClusterConfig().getCreateClusterBody(this);
     }
 
     public Object getCreateKibanaBody() {
-        return kibanaConfig.getCreateClusterBody(this);
+        return new KibanaConfig().getCreateClusterBody(this);
     }
 
     public void processCreateResponse(Object response, EceConfig eceConfig) {
-        clusterConfig.processCreateResponse(response, this, eceConfig);
+        new ClusterConfig().processCreateResponse(response, this, eceConfig);
     }
 
     public void processCreateKibanaResponse(Object response, EceConfig eceConfig) {
-        kibanaConfig.processCreateResponse(response, this, eceConfig);
+        new KibanaConfig().processCreateResponse(response, this, eceConfig);
     }
 
     public String getClusterId() {
@@ -131,13 +140,5 @@ public class ServiceInstance implements Serializable {
 
     public String getClusterName() {
         return getClusterParams().get(ClusterConfig.eceApiKeys.cluster_name.name());
-    }
-
-    public boolean isKibanaWanted() {
-        return getKibanaParams().containsKey(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name());
-    }
-
-    public boolean isKibanaRequested() {
-        return isKibanaWanted() && getKibanaParams().get(KibanaConfig.kibanaApiKeys.kibana_cluster_id.name()).equals(KibanaConfig.REQUESTED);
     }
 }
